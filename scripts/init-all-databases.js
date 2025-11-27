@@ -157,6 +157,66 @@ function parseSqlWithDelimiter(sql) {
   return statements;
 }
 
+// 插入数据库连接配置（使用环境变量）
+async function insertDbConnections(conn) {
+  console.log(`  执行: 插入数据库连接配置...`);
+  
+  const connections = [
+    {
+      db_name: 'mysql_main',
+      db_type: 'mysql',
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: parseInt(process.env.MYSQL_PORT) || 3306,
+      database_name: process.env.MYSQL_DATABASE || 'library_management',
+      username: process.env.MYSQL_USER || 'root',
+      password_enc: process.env.MYSQL_PASSWORD || '',
+      status: '激活',
+      sync_priority: 1
+    },
+    {
+      db_name: 'mariadb_backup',
+      db_type: 'mariadb',
+      host: process.env.MARIADB_HOST || 'localhost',
+      port: parseInt(process.env.MARIADB_PORT) || 3307,
+      database_name: process.env.MARIADB_DATABASE || 'library_management',
+      username: process.env.MARIADB_USER || 'root',
+      password_enc: process.env.MARIADB_PASSWORD || '',
+      status: '激活',
+      sync_priority: 2
+    },
+    {
+      db_name: 'greatsql_archive',
+      db_type: 'greatsql',
+      host: process.env.GREATSQL_HOST || 'localhost',
+      port: parseInt(process.env.GREATSQL_PORT) || 3308,
+      database_name: process.env.GREATSQL_DATABASE || 'library_management',
+      username: process.env.GREATSQL_USER || 'root',
+      password_enc: process.env.GREATSQL_PASSWORD || '',
+      status: '激活',
+      sync_priority: 3
+    }
+  ];
+  
+  try {
+    // 先清空现有配置
+    await conn.query('DELETE FROM `db_connections`');
+    
+    // 插入新配置
+    for (const c of connections) {
+      await conn.query(
+        `INSERT INTO \`db_connections\` 
+         (\`db_name\`, \`db_type\`, \`host\`, \`port\`, \`database_name\`, \`username\`, \`password_enc\`, \`status\`, \`sync_priority\`) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [c.db_name, c.db_type, c.host, c.port, c.database_name, c.username, c.password_enc, c.status, c.sync_priority]
+      );
+    }
+    
+    console.log(`  ✅ 插入数据库连接配置 完成（已从 .env 读取）`);
+  } catch (error) {
+    console.error(`  ❌ 插入数据库连接配置失败: ${error.message}`);
+  }
+}
+
 // 初始化单个数据库
 async function initDatabase(dbName, config, options) {
   console.log(`\n${'='.repeat(50)}`);
@@ -192,6 +252,9 @@ async function initDatabase(dbName, config, options) {
       if (dataSql) {
         await executeSql(conn, dataSql, '插入初始数据');
       }
+      
+      // 2.1 插入数据库连接配置（使用环境变量）
+      await insertDbConnections(conn);
     } else {
       console.log(`  ⏭️  跳过初始数据`);
     }
