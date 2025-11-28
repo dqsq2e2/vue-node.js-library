@@ -901,12 +901,59 @@ export default {
     gap: 16px;
   }
   
+  .welcome-text h2 {
+    font-size: 20px;
+  }
+  
   .stats-container {
     grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .action-item {
+    padding: 16px 12px;
+  }
+  
+  .action-item span {
+    font-size: 13px;
+  }
+  
+  .content-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-container {
+    grid-template-columns: 1fr;
   }
   
   .quick-actions {
     grid-template-columns: 1fr;
+  }
+  
+  .welcome-text h2 {
+    font-size: 18px;
+  }
+  
+  .welcome-text p {
+    font-size: 13px;
+  }
+  
+  .activity-text {
+    font-size: 13px;
   }
 }
 </style>

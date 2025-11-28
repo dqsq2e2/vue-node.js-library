@@ -60,7 +60,7 @@ class DatabaseSyncService {
           if (Array.isArray(result) && result.length > 0 && result[0].config_value === 'true') {
             this.primaryDB = db;
             this.lastPrimaryDBCheck = now;
-            logger.info(`✅ 当前主数据库: ${db}`);
+            logger.debug(`✅ 当前主数据库: ${db}`);
             return db;
           } else if (Array.isArray(result) && result.length > 0) {
             logger.debug(`${db} 的 is_master_database = '${result[0].config_value}' (不是主库)`);
@@ -144,8 +144,6 @@ class DatabaseSyncService {
     const startTime = Date.now();
 
     try {
-      logger.info('开始执行数据同步任务');
-      
       // 获取待同步的日志
       const pendingLogs = await this.getPendingSyncLogs();
       
@@ -734,14 +732,19 @@ class DatabaseSyncService {
       }
     }
 
-    // 2. 时间冲突：目标更新时间更晚
+    // 2. 时间冲突：目标更新时间更晚（增加容差避免同步延迟导致的误判）
     if (!conflictInfo.hasConflict && existingData.last_updated_time && newData.last_updated_time) {
       const existingTime = new Date(existingData.last_updated_time);
       const newTime = new Date(newData.last_updated_time);
-      if (existingTime > newTime) {
+      const timeDiffSeconds = (existingTime - newTime) / 1000;
+      
+      // 只有当时间差超过30秒时才判定为真实冲突（避免同步延迟导致的误判）
+      if (timeDiffSeconds > 30) {
         conflictInfo.hasConflict = true;
         conflictInfo.type = 'concurrent';
-        logger.warn(`时间冲突: 目标时间(${existingTime.toISOString()}) > 源时间(${newTime.toISOString()})`);
+        logger.warn(`时间冲突: 目标时间(${existingTime.toISOString()}) > 源时间(${newTime.toISOString()}), 差异 ${timeDiffSeconds.toFixed(1)}秒`);
+      } else if (timeDiffSeconds > 0) {
+        logger.debug(`时间差异在容差范围内: ${timeDiffSeconds.toFixed(1)}秒，视为正常同步延迟`);
       }
     }
 
@@ -778,10 +781,18 @@ class DatabaseSyncService {
    */
   normalizeValue(value) {
     if (value === null || value === undefined) return null;
+    
+    // 日期类型：只比较日期部分
     if (value instanceof Date) return value.toISOString().split('T')[0];
     if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-      return value.split('T')[0]; // 日期只比较日期部分
+      return value.split('T')[0];
     }
+    
+    // 数值类型：统一转换为数字进行比较（处理 "0.00" vs 0 的情况）
+    if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
+      return parseFloat(value);
+    }
+    
     return value;
   }
 
@@ -1070,7 +1081,7 @@ class DatabaseSyncService {
             logger.info(`冲突通知邮件已发送至管理员: ${admin.real_name} (${admin.email})`);
           } catch (emailError) {
             failCount++;
-            logger.error(`发送冲突通知邮件失败: ${admin.email}`, emailError.message);
+            logger.error(`发送冲突通知邮件失败: ${admin.email}`, emailError);
           }
         }
         
@@ -1202,7 +1213,7 @@ class DatabaseSyncService {
               logger.info(`冲突通知邮件已发送至管理员: ${admin.real_name} (${admin.email})`);
             } catch (emailError) {
               failCount++;
-              logger.error(`发送冲突通知邮件失败: ${admin.email}`, emailError.message);
+              logger.error(`发送冲突通知邮件失败: ${admin.email}`, emailError);
             }
           }
           

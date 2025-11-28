@@ -157,10 +157,10 @@
     </el-card>
 
     <!-- 图书详情对话框 -->
-    <el-dialog v-model="detailVisible" title="图书详情" width="600px">
+    <el-dialog v-model="detailVisible" title="图书详情" :width="isMobile ? '95%' : '600px'">
       <div v-if="currentBook" class="book-detail">
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="8">
             <el-image 
               :src="getImageUrl(currentBook.cover_image)" 
               fit="cover"
@@ -175,14 +175,14 @@
               </template>
             </el-image>
           </el-col>
-          <el-col :span="16">
+          <el-col :xs="24" :sm="16">
             <el-descriptions :column="1" border>
               <el-descriptions-item label="图书名称">{{ currentBook.title }}</el-descriptions-item>
               <el-descriptions-item label="作者">{{ currentBook.author }}</el-descriptions-item>
               <el-descriptions-item label="ISBN">{{ currentBook.isbn }}</el-descriptions-item>
               <el-descriptions-item label="出版社">{{ currentBook.publisher }}</el-descriptions-item>
               <el-descriptions-item label="出版日期">{{ currentBook.publish_date }}</el-descriptions-item>
-              <el-descriptions-item label="分类">{{ currentBook.category }}</el-descriptions-item>
+              <el-descriptions-item label="分类">{{ currentBook.category_name || '-' }}</el-descriptions-item>
               <el-descriptions-item label="价格">¥{{ currentBook.price }}</el-descriptions-item>
               <el-descriptions-item label="库存">
                 <span :class="{ 'text-success': currentBook.available_copies > 0, 'text-danger': currentBook.available_copies === 0 }">
@@ -215,7 +215,7 @@
     </el-dialog>
 
     <!-- 借阅确认对话框 -->
-    <el-dialog v-model="borrowDialogVisible" title="借阅确认" width="400px">
+    <el-dialog v-model="borrowDialogVisible" title="借阅确认" :width="isMobile ? '95%' : '400px'">
       <div v-if="selectedBook">
         <p>确定要借阅以下图书吗？</p>
         <el-descriptions :column="1" border>
@@ -243,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -254,6 +254,12 @@ import request from '@/utils/request'
 
 const store = useStore()
 const router = useRouter()
+
+// 移动端检测
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 响应式数据
 const loading = ref(false)
@@ -456,6 +462,11 @@ const getImageUrl = (imagePath) => {
 onMounted(() => {
   fetchCategories()
   fetchBooks()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -620,5 +631,42 @@ onMounted(() => {
 
 .text-danger {
   color: #f56c6c;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .books-browse-container {
+    padding: 10px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .books-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .book-detail .detail-cover {
+    height: auto;
+    max-height: 400px;
+    margin-bottom: 15px;
+  }
+
+  .pagination-container {
+    margin-top: 20px;
+  }
+
+  .pagination-container :deep(.el-pagination) {
+    justify-content: center;
+  }
+
+  .pagination-container :deep(.el-pagination__sizes),
+  .pagination-container :deep(.el-pagination__jump) {
+    display: none;
+  }
 }
 </style>

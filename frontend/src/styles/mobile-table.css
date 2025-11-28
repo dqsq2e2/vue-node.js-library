@@ -1,0 +1,130 @@
+/* 通用移动端表格适配样式 */
+
+/* 操作按钮默认样式 */
+.action-buttons .desktop-actions {
+  display: block;
+}
+
+.action-buttons .mobile-actions {
+  display: none;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 页面头部适配 */
+  .page-header {
+    text-align: center;
+    padding: 16px 0;
+  }
+  
+  .page-header h1,
+  .page-header h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  
+  .page-header p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  /* 搜索表单适配 */
+  .search-card .el-form {
+    flex-direction: column;
+  }
+  
+  .search-card .el-form-item {
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .search-card .el-input,
+  .search-card .el-select {
+    width: 100% !important;
+  }
+  
+  /* 表格移动端隐藏次要列 */
+  .el-table .mobile-hide {
+    display: none !important;
+  }
+  
+  /* 操作按钮适配 */
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+  
+  .el-table .el-button {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin: 0 2px;
+  }
+  
+  /* 分页适配 */
+  .pagination-container {
+    padding: 16px 0;
+    text-align: center;
+  }
+  
+  .el-pagination {
+    justify-content: center;
+  }
+  
+  /* 隐藏分页的部分功能 */
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+  
+  /* 表格卡片适配 */
+  .table-card {
+    margin: 16px 0;
+  }
+  
+  /* 对话框适配 */
+  .el-dialog {
+    width: 95% !important;
+    margin-top: 5vh !important;
+  }
+  
+  .el-dialog__body {
+    padding: 16px;
+  }
+  
+  /* 表单对话框适配 */
+  .el-dialog .el-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .el-dialog .el-col {
+    width: 100% !important;
+  }
+}
+
+/* 小屏幕进一步优化 */
+@media (max-width: 480px) {
+  .page-header h1,
+  .page-header h2 {
+    font-size: 18px;
+  }
+  
+  .page-header p {
+    font-size: 13px;
+  }
+  
+  .el-button span {
+    font-size: 13px;
+  }
+  
+  .el-table {
+    font-size: 13px;
+  }
+  
+  .el-table .el-button {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+}

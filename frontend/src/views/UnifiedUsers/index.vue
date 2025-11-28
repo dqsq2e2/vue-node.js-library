@@ -58,99 +58,116 @@
 
     <!-- 用户列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table 
-        v-loading="loading"
-        :data="userList" 
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" :index="(index) => (pagination.page - 1) * pagination.limit + index + 1" />
-        
-        <el-table-column prop="real_name" label="姓名" width="120" show-overflow-tooltip />
-        <el-table-column prop="username" label="用户名" width="150" show-overflow-tooltip />
-        
-        <el-table-column prop="role" label="角色" width="100">
+      <div class="table-container">
+        <el-table 
+          v-loading="loading"
+          :data="userList" 
+          style="width: 100%;"
+          @selection-change="handleSelectionChange"
+          @row-click="handleRowClick"
+          @row-dblclick="handleRowDblClick"
+          class="clickable-table"
+          stripe
+          border
+        >
+        <el-table-column v-if="!isMobile" type="selection" width="55" />
+        <el-table-column v-if="!isMobile" type="index" label="序号" width="60" />
+        <el-table-column prop="real_name" label="姓名" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" label="用户名" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.username || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" prop="role" label="角色" width="110">
           <template #default="{ row }">
             <el-tag :type="getRoleType(row.role)">
               {{ getRoleText(row.role) }}
             </el-tag>
           </template>
         </el-table-column>
-        
-        <!-- 读者专用列 -->
-        <el-table-column 
-          v-if="searchForm.role === 'reader' || searchForm.role === 'all'"
-          prop="reader_profile.card_number" 
-          label="借书证号" 
-          width="130"
-          show-overflow-tooltip 
-        />
-        
-        <el-table-column 
-          v-if="searchForm.role === 'reader' || searchForm.role === 'all'"
-          prop="reader_profile.department" 
-          label="部门" 
-          width="150"
-          show-overflow-tooltip 
-        />
-        
-        <el-table-column 
-          v-if="searchForm.role === 'reader'"
-          prop="reader_profile.membership_type" 
-          label="会员类型" 
-          width="100"
-        />
-        
-        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip />
-        <el-table-column prop="phone" label="手机号" width="130" />
-        
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column v-if="!isMobile" label="借书证号" width="120">
+          <template #default="{ row }">
+            {{ row.card_number || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="部门" width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.department || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="会员类型" width="100">
+          <template #default="{ row }">
+            {{ row.membership_type || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="邮箱" min-width="110" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.email || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="手机号" width="120">
+          <template #default="{ row }">
+            {{ row.phone || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" :width="isMobile ? '' : 80">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        
-        <el-table-column prop="last_login" label="最后登录" width="160">
+        <el-table-column v-if="!isMobile" label="最后登录" width="160">
           <template #default="{ row }">
             {{ formatDate(row.last_login) || '从未登录' }}
           </template>
         </el-table-column>
-        
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? '' : 100">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button type="primary" size="small" @click="handleView(row)">
-                查看
-              </el-button>
-              <el-button 
-                v-if="canManageRole(row.role)" 
-                type="warning" 
-                size="small" 
-                @click="handleEdit(row)"
-              >
-                编辑
-              </el-button>
-              <el-dropdown v-if="canManageRole(row.role)" @command="(command) => handleDropdownCommand(command, row)">
-                <el-button type="info" size="small">
-                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="resetPassword">重置密码</el-dropdown-item>
-                    <el-dropdown-item command="toggleStatus">
-                      {{ row.status === '激活' ? '停用' : '激活' }}
-                    </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <!-- 桌面端显示 -->
+              <div class="desktop-actions" @click.stop>
+                <el-dropdown @command="(command) => handleMobileCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="resetPassword">重置密码</el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="toggleStatus">
+                        {{ row.status === '激活' ? '停用' : '激活' }}
+                      </el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+              <!-- 移动端显示 -->
+              <div class="mobile-actions" @click.stop>
+                <el-dropdown @command="(command) => handleMobileCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看</el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="resetPassword">重置密码</el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="toggleStatus">
+                        {{ row.status === '激活' ? '停用' : '激活' }}
+                      </el-dropdown-item>
+                      <el-dropdown-item v-if="canManageRole(row.role)" command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination-container">
@@ -170,81 +187,84 @@
     <el-dialog 
       v-model="dialogVisible" 
       :title="dialogTitle" 
-      width="800px"
+      width="600px"
       :close-on-click-modal="false"
+      class="user-dialog"
     >
-      <el-form 
-        ref="userFormRef" 
-        :model="userForm" 
-        :rules="userRules" 
-        label-width="120px"
-      >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="用户名" prop="username">
-              <el-input 
-                v-model="userForm.username" 
-                :placeholder="isEdit ? '用户名不可修改' : '请输入用户名'"
-                :disabled="isEdit"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="真实姓名" prop="real_name">
-              <el-input v-model="userForm.real_name" placeholder="请输入真实姓名" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="角色" prop="role">
-              <el-select 
-                v-model="userForm.role" 
-                placeholder="选择角色" 
-                style="width: 100%"
-                @change="handleRoleChange"
-                :disabled="isLibrarian"
-              >
-                <el-option v-if="isAdmin" label="管理员" value="admin" />
-                <el-option v-if="isAdmin" label="图书管理员" value="librarian" />
-                <el-option label="读者" value="reader" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="状态" prop="status">
-              <el-select v-model="userForm.status" placeholder="选择状态" style="width: 100%">
-                <el-option label="激活" value="激活" />
-                <el-option label="停用" value="停用" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="邮箱" prop="email">
-              <el-input 
-                v-model="userForm.email" 
-                type="email"
-                placeholder="请输入邮箱" 
-                clearable
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="手机号" prop="phone">
-              <el-input 
-                v-model="userForm.phone" 
-                type="tel"
-                placeholder="请输入手机号" 
-                clearable
-                maxlength="11"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+      <el-scrollbar max-height="60vh">
+        <el-form 
+          ref="userFormRef" 
+          :model="userForm" 
+          :rules="userRules" 
+          label-width="100px"
+          class="dialog-form"
+        >
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="用户名" prop="username">
+                <el-input 
+                  v-model="userForm.username" 
+                  :placeholder="isEdit ? '用户名不可修改' : '请输入用户名'"
+                  :disabled="isEdit"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="真实姓名" prop="real_name">
+                <el-input v-model="userForm.real_name" placeholder="请输入真实姓名" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="角色" prop="role">
+                <el-select 
+                  v-model="userForm.role" 
+                  placeholder="选择角色" 
+                  style="width: 100%"
+                  @change="handleRoleChange"
+                  :disabled="isLibrarian"
+                >
+                  <el-option v-if="isAdmin" label="管理员" value="admin" />
+                  <el-option v-if="isAdmin" label="图书管理员" value="librarian" />
+                  <el-option label="读者" value="reader" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="状态" prop="status">
+                <el-select v-model="userForm.status" placeholder="选择状态" style="width: 100%">
+                  <el-option label="激活" value="激活" />
+                  <el-option label="停用" value="停用" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="邮箱" prop="email">
+                <el-input 
+                  v-model="userForm.email" 
+                  type="email"
+                  placeholder="请输入邮箱" 
+                  clearable
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="手机号" prop="phone">
+                <el-input 
+                  v-model="userForm.phone" 
+                  type="tel"
+                  placeholder="请输入手机号" 
+                  clearable
+                  maxlength="11"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
         
         <el-form-item v-if="!isEdit" label="密码" prop="password">
           <el-input 
@@ -255,77 +275,78 @@
           />
         </el-form-item>
         
-        <!-- 读者扩展字段 -->
-        <template v-if="userForm.role === 'reader'">
-          <el-divider content-position="left">读者信息</el-divider>
-          
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="借书证号" prop="card_number">
-                <el-input v-model="userForm.card_number" placeholder="请输入借书证号" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="性别" prop="gender">
-                <el-select v-model="userForm.gender" placeholder="选择性别" style="width: 100%" clearable>
-                  <el-option label="男" value="男" />
-                  <el-option label="女" value="女" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="部门" prop="department">
-                <el-input v-model="userForm.department" placeholder="请输入部门" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="会员类型" prop="membership_type">
-                <el-select v-model="userForm.membership_type" placeholder="选择会员类型" style="width: 100%">
-                  <el-option label="普通" value="普通" />
-                  <el-option label="VIP" value="VIP" />
-                  <el-option label="教师" value="教师" />
-                  <el-option label="学生" value="学生" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="注册日期" prop="register_date">
-                <el-date-picker
-                  v-model="userForm.register_date"
-                  type="date"
-                  placeholder="选择注册日期"
-                  style="width: 100%"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="有效期至" prop="expire_date">
-                <el-date-picker
-                  v-model="userForm.expire_date"
-                  type="date"
-                  placeholder="选择有效期"
-                  style="width: 100%"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-          
-          <el-form-item label="最大借书数" prop="max_borrow">
-            <el-input-number
-              v-model="userForm.max_borrow"
-              :min="1"
-              :max="20"
-              style="width: 200px"
-            />
-          </el-form-item>
-        </template>
-      </el-form>
+          <!-- 读者扩展字段 -->
+          <template v-if="userForm.role === 'reader'">
+            <el-divider content-position="left">读者信息</el-divider>
+            
+            <el-row :gutter="20">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="借书证号" prop="card_number">
+                  <el-input v-model="userForm.card_number" placeholder="请输入借书证号" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="性别" prop="gender">
+                  <el-select v-model="userForm.gender" placeholder="选择性别" style="width: 100%" clearable>
+                    <el-option label="男" value="男" />
+                    <el-option label="女" value="女" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            
+            <el-row :gutter="20">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="部门" prop="department">
+                  <el-input v-model="userForm.department" placeholder="请输入部门" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="会员类型" prop="membership_type">
+                  <el-select v-model="userForm.membership_type" placeholder="选择会员类型" style="width: 100%">
+                    <el-option label="普通" value="普通" />
+                    <el-option label="VIP" value="VIP" />
+                    <el-option label="教师" value="教师" />
+                    <el-option label="学生" value="学生" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            
+            <el-row :gutter="20">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="注册日期" prop="register_date">
+                  <el-date-picker
+                    v-model="userForm.register_date"
+                    type="date"
+                    placeholder="选择注册日期"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="有效期至" prop="expire_date">
+                  <el-date-picker
+                    v-model="userForm.expire_date"
+                    type="date"
+                    placeholder="选择有效期"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            
+            <el-form-item label="最大借书数" prop="max_borrow">
+              <el-input-number
+                v-model="userForm.max_borrow"
+                :min="1"
+                :max="20"
+                style="width: 200px"
+              />
+            </el-form-item>
+          </template>
+        </el-form>
+      </el-scrollbar>
       
       <template #footer>
         <span class="dialog-footer">
@@ -338,9 +359,10 @@
     </el-dialog>
 
     <!-- 用户详情对话框 -->
-    <el-dialog v-model="detailVisible" title="用户详情" width="600px">
-      <div v-if="currentUser" class="user-detail">
-        <el-descriptions :column="2" border>
+    <el-dialog v-model="detailVisible" title="用户详情" width="600px" class="detail-dialog">
+      <el-scrollbar max-height="70vh">
+        <div v-if="currentUser" class="user-detail">
+          <el-descriptions :column="1" border>
           <el-descriptions-item label="用户ID">{{ currentUser.user_id }}</el-descriptions-item>
           <el-descriptions-item label="用户名">{{ currentUser.username }}</el-descriptions-item>
           <el-descriptions-item label="真实姓名">{{ currentUser.real_name }}</el-descriptions-item>
@@ -362,7 +384,7 @@
           
           <!-- 读者扩展信息 -->
           <template v-if="currentUser.reader_profile">
-            <el-descriptions-item label="借书证号" :span="2">{{ currentUser.reader_profile.card_number }}</el-descriptions-item>
+            <el-descriptions-item label="借书证号">{{ currentUser.reader_profile.card_number }}</el-descriptions-item>
             <el-descriptions-item label="性别">{{ currentUser.reader_profile.gender || '未设置' }}</el-descriptions-item>
             <el-descriptions-item label="部门">{{ currentUser.reader_profile.department || '未设置' }}</el-descriptions-item>
             <el-descriptions-item label="会员类型">{{ currentUser.reader_profile.membership_type }}</el-descriptions-item>
@@ -371,13 +393,14 @@
             <el-descriptions-item label="有效期至">{{ formatDate(currentUser.reader_profile.expire_date) }}</el-descriptions-item>
           </template>
         </el-descriptions>
-      </div>
+        </div>
+      </el-scrollbar>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, ArrowDown } from '@element-plus/icons-vue'
@@ -395,6 +418,12 @@ import { useStore } from 'vuex'
 // 路由和store
 const route = useRoute()
 const store = useStore()
+
+// 移动端检测
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 响应式数据
 const loading = ref(false)
@@ -612,8 +641,41 @@ const handleView = async (row) => {
   }
 }
 
+const handleRowClick = (row) => {
+  if (isMobile.value) {
+    handleView(row)
+  }
+}
+
+const handleRowDblClick = (row) => {
+  if (!isMobile.value) {
+    handleView(row)
+  }
+}
+
 const handleDropdownCommand = (command, row) => {
   switch (command) {
+    case 'resetPassword':
+      handleResetPassword(row)
+      break
+    case 'toggleStatus':
+      handleToggleStatus(row)
+      break
+    case 'delete':
+      handleDelete(row)
+      break
+  }
+}
+
+// 移动端下拉菜单处理
+const handleMobileCommand = (command, row) => {
+  switch (command) {
+    case 'view':
+      handleView(row)
+      break
+    case 'edit':
+      handleEdit(row)
+      break
     case 'resetPassword':
       handleResetPassword(row)
       break
@@ -800,6 +862,8 @@ const resetForm = () => {
 
 // 生命周期
 onMounted(() => {
+  window.addEventListener('resize', handleResize)
+  
   // 根据用户角色设置默认搜索条件
   if (isLibrarian.value) {
     // 图书管理员默认只显示读者
@@ -813,6 +877,10 @@ onMounted(() => {
   }
   
   fetchUsers()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -871,14 +939,173 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 响应式设计 */
+.table-container {
+  overflow-x: auto;
+  min-height: 400px;
+}
+
+/* 用户信息样式 */
+.user-info {
+  padding: 4px 0;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.user-meta {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #909399;
+}
+
+.username {
+  color: #606266;
+}
+
+/* 可点击表格样式 */
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.clickable-table :deep(.el-table__row:hover) {
+  background-color: #f5f7fa;
+}
+
+/* 操作按钮默认样式 */
+.action-buttons .desktop-actions {
+  display: block;
+}
+
+.action-buttons .mobile-actions {
+  display: none;
+}
+
+/* 对话框表单优化 */
+.dialog-form {
+  padding: 0 20px;
+}
+
+.dialog-form .el-form-item {
+  margin-bottom: 20px;
+}
+
+.user-dialog .el-dialog__body {
+  padding: 10px 0;
+}
+
+.detail-dialog .el-dialog__body {
+  padding: 10px 0;
+}
+
+.user-detail {
+  padding: 0 20px;
+}
+
+/* 移动端适配 */
 @media (max-width: 768px) {
+  /* 对话框适配 */
+  .user-dialog,
+  .detail-dialog {
+    width: 95% !important;
+  }
+  
+  .dialog-form {
+    padding: 0 10px;
+  }
+  
+  .user-detail {
+    padding: 0 10px;
+  }
   .unified-users-container {
-    padding: 10px;
+    padding: 0;
+  }
+  
+  .table-card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  .search-card {
+    margin: 8px !important;
+    border-radius: 8px !important;
+  }
+  
+  .search-card :deep(.el-card__body) {
+    padding: 12px !important;
+  }
+  
+  .table-card :deep(.el-card__body) {
+    padding: 8px 0 !important;
+  }
+  
+  /* 页面头部 */
+  .page-header {
+    text-align: center;
   }
   
   .page-header h1 {
     font-size: 20px;
+  }
+  
+  .page-header p {
+    font-size: 14px;
+  }
+  
+  /* 搜索表单适配 */
+  .search-card .el-form {
+    flex-direction: column;
+  }
+  
+  .search-card .el-form-item {
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .search-card .el-input,
+  .search-card .el-select {
+    width: 100% !important;
+  }
+  
+  /* 隐藏次要列和选择列 */
+  :deep(.mobile-hide),
+  :deep(.el-table-column--selection) {
+    display: none !important;
+  }
+  
+  /* 表格优化 - 强制占满宽度 */
+  :deep(.el-table__header-wrapper table),
+  :deep(.el-table__body-wrapper table) {
+    width: 100% !important;
+  }
+  
+  /* 操作按钮适配 */
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+  
+  /* 分页适配 */
+  .pagination-container {
+    padding: 16px 0;
+    text-align: center;
+  }
+  
+  .el-pagination {
+    justify-content: center;
+  }
+  
+  /* 隐藏分页的部分功能 */
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
   }
 }
 </style>

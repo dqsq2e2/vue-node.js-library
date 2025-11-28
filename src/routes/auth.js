@@ -280,6 +280,67 @@ router.get('/profile', authenticate, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * 发送修改邮箱验证码
+ */
+router.post('/send-email-change-code', authenticate, [
+  body('newEmail').isEmail().withMessage('请输入有效的邮箱地址')
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: '参数验证失败',
+      errors: errors.array()
+    });
+  }
+
+  const { newEmail } = req.body;
+  const userId = req.user.id;
+
+  try {
+    // 检查新邮箱是否已被其他用户使用
+    const checkSql = 'SELECT user_id FROM system_users WHERE email = ? AND user_id != ? AND is_deleted = 0';
+    const existing = await executeQuery('mysql', checkSql, [newEmail, userId]);
+    
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '该邮箱已被其他用户使用'
+      });
+    }
+
+    // 生成6位验证码
+    const code = Math.random().toString().slice(2, 8);
+    
+    // 存储验证码（10分钟有效期），使用特殊key标识是修改邮箱的验证码
+    const verifyKey = `email_change_${userId}_${newEmail}`;
+    verificationCodes.set(verifyKey, {
+      code,
+      userId,
+      newEmail,
+      expireAt: Date.now() + 10 * 60 * 1000
+    });
+
+    // 发送验证码邮件到新邮箱
+    await emailService.sendVerificationCode(newEmail, code);
+
+    logger.info(`邮箱修改验证码已发送至: ${newEmail}, 用户ID: ${userId}`);
+
+    res.json({
+      success: true,
+      message: '验证码已发送到新邮箱，请查收'
+    });
+
+  } catch (error) {
+    logger.error('发送邮箱修改验证码失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '发送验证码失败: ' + error.message
+    });
+  }
+}));
+
+/**
  * 更新用户信息
  */
 router.put('/profile', authenticate, [
@@ -287,6 +348,10 @@ router.put('/profile', authenticate, [
     .optional()
     .isEmail()
     .withMessage('请输入正确的邮箱地址'),
+  body('emailCode')
+    .optional()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('验证码必须是6位数字'),
   body('phone')
     .optional()
     .matches(/^1[3-9]\d{9}$/)
@@ -302,18 +367,79 @@ router.put('/profile', authenticate, [
     });
   }
 
-  const { email, phone } = req.body;
+  const { email, emailCode, phone } = req.body;
   const userId = req.user.id;
 
   try {
+    // 如果要修改邮箱，必须提供验证码
+    if (email) {
+      if (!emailCode) {
+        return res.status(400).json({
+          success: false,
+          message: '修改邮箱需要提供验证码'
+        });
+      }
+
+      // 验证验证码
+      const verifyKey = `email_change_${userId}_${email}`;
+      const storedData = verificationCodes.get(verifyKey);
+
+      if (!storedData) {
+        return res.status(400).json({
+          success: false,
+          message: '验证码不存在或已过期，请重新获取'
+        });
+      }
+
+      if (Date.now() > storedData.expireAt) {
+        verificationCodes.delete(verifyKey);
+        return res.status(400).json({
+          success: false,
+          message: '验证码已过期，请重新获取'
+        });
+      }
+
+      if (storedData.code !== emailCode) {
+        return res.status(400).json({
+          success: false,
+          message: '验证码错误'
+        });
+      }
+
+      // 验证通过，删除验证码
+      verificationCodes.delete(verifyKey);
+    }
+
     // 更新用户信息
+    const updateFields = [];
+    const updateValues = [];
+
+    if (email) {
+      updateFields.push('email = ?');
+      updateValues.push(email);
+    }
+    if (phone !== undefined) {
+      updateFields.push('phone = ?');
+      updateValues.push(phone);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '没有需要更新的信息'
+      });
+    }
+
+    updateFields.push('last_updated_time = NOW()');
+    updateValues.push(userId);
+
     const sql = `
       UPDATE system_users 
-      SET email = ?, phone = ?, last_updated_time = NOW()
+      SET ${updateFields.join(', ')}
       WHERE user_id = ? AND is_deleted = 0
     `;
     
-    const result = await executeQuery('mysql', sql, [email, phone, userId]);
+    const result = await executeQuery('mysql', sql, updateValues);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -325,6 +451,8 @@ router.put('/profile', authenticate, [
     // 获取更新后的用户信息
     const user = await getUserInfo(userId);
     
+    logger.info(`用户 ${userId} 更新个人信息${email ? ' (含邮箱)' : ''}`);
+    
     res.json({
       success: true,
       message: '用户信息更新成功',
@@ -332,6 +460,7 @@ router.put('/profile', authenticate, [
     });
     
   } catch (error) {
+    logger.error('更新用户信息失败:', error);
     res.status(500).json({
       success: false,
       message: error.message || '更新用户信息失败'

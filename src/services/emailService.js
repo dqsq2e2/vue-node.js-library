@@ -18,7 +18,7 @@ class EmailService {
   init() {
     try {
       // 检查是否配置了邮件服务
-      if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
         logger.warn('邮件服务未配置，邮件功能将不可用');
         return;
       }
@@ -29,14 +29,14 @@ class EmailService {
         secure: parseInt(process.env.SMTP_PORT) === 465, // true for 465, false for other ports
         auth: {
           user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD
+          pass: process.env.SMTP_PASS
         }
       });
 
       // 验证配置
       this.transporter.verify((error, success) => {
         if (error) {
-          logger.error('邮件服务配置验证失败:', error.message);
+          logger.error('邮件服务配置验证失败:', error);
           this.initialized = false;
         } else {
           logger.info('邮件服务初始化成功');
@@ -45,7 +45,7 @@ class EmailService {
         }
       });
     } catch (error) {
-      logger.error('邮件服务初始化失败:', error.message);
+      logger.error('邮件服务初始化失败:', error);
       this.initialized = false;
     }
   }
@@ -63,7 +63,7 @@ class EmailService {
       await this.transporter.verify();
       return true;
     } catch (error) {
-      logger.error('邮件服务连接验证失败:', error.message);
+      logger.error('邮件服务连接验证失败:', error);
       return false;
     }
   }
@@ -84,7 +84,7 @@ class EmailService {
 
     try {
       const mailOptions = {
-        from: `"图书管理系统" <${process.env.SMTP_FROM}>`,
+        from: `"图书管理系统" <${process.env.SMTP_USER}>`,  // 使用SMTP_USER确保与认证账号一致
         to,
         subject,
         text,
@@ -99,7 +99,7 @@ class EmailService {
         message: '邮件发送成功'
       };
     } catch (error) {
-      logger.error(`邮件发送失败: ${to} - ${subject}`, error.message);
+      logger.error(`邮件发送失败: ${to} - ${subject}`, error);
       throw error;
     }
   }

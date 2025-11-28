@@ -6,9 +6,9 @@
     </div>
 
     <!-- 搜索和操作栏 -->
-    <div class="search-bar">
-      <el-row :gutter="20">
-        <el-col :span="8">
+    <el-card class="search-card" shadow="never">
+      <el-form :model="searchForm" inline class="search-form">
+        <el-form-item label="搜索">
           <el-input
             v-model="searchForm.search"
             placeholder="搜索分类名称或描述"
@@ -19,13 +19,13 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-        </el-col>
-        <el-col :span="6">
+        </el-form-item>
+        <el-form-item label="父分类">
           <el-select
             v-model="searchForm.parent_id"
             placeholder="选择父分类"
             clearable
-            style="width: 100%"
+            style="width: 200px"
           >
             <el-option label="顶级分类" :value="0" />
             <el-option
@@ -35,97 +35,125 @@
               :value="category.category_id"
             />
           </el-select>
-        </el-col>
-        <el-col :span="10">
+        </el-form-item>
+        <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="resetSearch">重置</el-button>
+          <el-button @click="resetSearch">
+            <el-icon><Refresh /></el-icon>
+            重置
+          </el-button>
           <el-button type="success" @click="handleAdd">
             <el-icon><Plus /></el-icon>
             添加分类
           </el-button>
-        </el-col>
-      </el-row>
-    </div>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
     <!-- 分类表格 -->
-    <div class="table-container">
-      <el-table
-        v-loading="loading"
-        :data="categoryList"
-        style="width: 100%"
-        row-key="category_id"
-        :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-        default-expand-all
-        stripe
-        border
-      >
-        <el-table-column prop="category_name" label="分类名称" min-width="200">
+    <el-card class="table-card" shadow="never">
+      <div class="table-container">
+        <el-table
+          v-loading="loading"
+          :data="categoryList"
+          style="width: 100%;"
+          row-key="category_id"
+          :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+          default-expand-all
+          stripe
+          border
+          @selection-change="handleSelectionChange"
+        >
+        <el-table-column v-if="!isMobile" type="selection" width="55" />
+        <el-table-column v-if="!isMobile" type="index" label="序号" width="60" />
+        <el-table-column prop="category_name" label="分类名称">
           <template #default="{ row }">
             <span class="category-name">{{ row.category_name }}</span>
           </template>
         </el-table-column>
         
-        <el-table-column prop="parent_name" label="父分类" width="150">
+        <el-table-column v-if="!isMobile" prop="parent_name" label="父分类" width="150">
           <template #default="{ row }">
             <el-tag v-if="row.parent_id === 0" type="info" size="small">顶级分类</el-tag>
-            <span v-else>{{ row.parent_name }}</span>
+            <span v-else>{{ row.parent_name || '-' }}</span>
           </template>
         </el-table-column>
         
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" prop="description" label="描述" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.description || '-' }}
+          </template>
+        </el-table-column>
         
-        <el-table-column prop="sort_order" label="排序" width="80" align="center" />
+        <el-table-column v-if="!isMobile" prop="sort_order" label="排序" width="80" align="center">
+          <template #default="{ row }">
+            {{ row.sort_order || 0 }}
+          </template>
+        </el-table-column>
         
-        <el-table-column prop="book_count" label="图书数量" width="100" align="center">
+        <el-table-column prop="book_count" label="图书数量" :width="isMobile ? '' : 80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.book_count > 0 ? 'success' : 'info'" size="small">
-              {{ row.book_count }}
+              {{ row.book_count || 0 }}
             </el-tag>
           </template>
         </el-table-column>
         
-        <el-table-column prop="created_time" label="创建时间" width="180">
+        <el-table-column v-if="!isMobile" prop="created_time" label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatDateTime(row.created_time) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? '' : 100">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button 
-                type="primary" 
-                size="small" 
-                @click="handleEdit(row)"
-                :icon="Edit"
-              >
-                编辑
-              </el-button>
-              <el-button 
-                type="success" 
-                size="small" 
-                @click="handleAddChild(row)"
-                :icon="Plus"
-              >
-                子分类
-              </el-button>
-              <el-button 
-                type="danger" 
-                size="small" 
-                @click="handleDelete(row)"
-                :disabled="row.book_count > 0"
-                :icon="Delete"
-                :title="row.book_count > 0 ? `该分类下有 ${row.book_count} 本图书，无法删除` : '删除分类'"
-              >
-                删除
-              </el-button>
+              <!-- 桌面端显示 -->
+              <div class="desktop-actions" @click.stop>
+                <el-dropdown @command="(command) => handleActionCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="addChild">添加子分类</el-dropdown-item>
+                      <el-dropdown-item 
+                        command="delete" 
+                        :disabled="row.book_count > 0"
+                        divided
+                      >
+                        删除
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+              <!-- 移动端显示 -->
+              <div class="mobile-actions" @click.stop>
+                <el-dropdown @command="(command) => handleActionCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="addChild">添加子分类</el-dropdown-item>
+                      <el-dropdown-item command="delete" :disabled="row.book_count > 0" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination-container">
@@ -139,7 +167,7 @@
           @current-change="handleCurrentChange"
         />
       </div>
-    </div>
+    </el-card>
 
     <!-- 添加/编辑分类对话框 -->
     <el-dialog
@@ -215,10 +243,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, ArrowDown, Refresh } from '@element-plus/icons-vue'
 import {
   getCategoryList,
   getCategoryTree,
@@ -228,6 +256,12 @@ import {
 } from '@/api/categories'
 
 const route = useRoute()
+
+// 移动端检测
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 响应式数据
 const loading = ref(false)
@@ -251,6 +285,7 @@ const pagination = reactive({
 // 分类列表
 const categoryList = ref([])
 const allCategories = ref([])
+const selectedCategories = ref([])
 
 // 表单数据
 const categoryForm = reactive({
@@ -386,6 +421,40 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
+// 处理桌面端下拉菜单操作
+const handleDropdownCommand = (command, row) => {
+  switch (command) {
+    case 'addChild':
+      handleAddChild(row)
+      break
+    case 'delete':
+      if (row.book_count === 0) {
+        handleDelete(row)
+      }
+      break
+  }
+}
+
+// 处理移动端下拉菜单操作
+const handleActionCommand = (command, row) => {
+  switch (command) {
+    case 'view':
+      handleEdit(row)
+      break
+    case 'edit':
+      handleEdit(row)
+      break
+    case 'addChild':
+      handleAddChild(row)
+      break
+    case 'delete':
+      if (row.book_count === 0) {
+        handleDelete(row)
+      }
+      break
+  }
+}
+
 const handleDelete = async (row) => {
   if (row.book_count > 0) {
     ElMessage.warning('该分类下还有图书，无法删除')
@@ -415,6 +484,11 @@ const handleDelete = async (row) => {
       console.error('删除分类失败:', error)
     }
   }
+}
+
+// 选择变化处理
+const handleSelectionChange = (selection) => {
+  selectedCategories.value = selection
 }
 
 const handleSubmit = async () => {
@@ -477,6 +551,7 @@ const formatDateTime = (dateTime) => {
 
 // 生命周期
 onMounted(() => {
+  window.addEventListener('resize', handleResize)
   fetchCategories()
   fetchAllCategories()
   
@@ -484,6 +559,10 @@ onMounted(() => {
   if (route.query.action === 'add') {
     handleAdd()
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -516,10 +595,12 @@ onMounted(() => {
 }
 
 .table-container {
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow-x: auto;
+  min-height: 400px;
+}
+
+.table-card {
+  margin-bottom: 20px;
 }
 
 .category-name {
@@ -572,10 +653,16 @@ onMounted(() => {
 
 :deep(.el-table) {
   border: none;
+  table-layout: auto;
 }
 
 :deep(.el-table__header) {
   background-color: #fafafa;
+}
+
+:deep(.el-table th),
+:deep(.el-table td) {
+  padding: 8px 5px;
 }
 
 :deep(.el-table td) {
@@ -586,30 +673,102 @@ onMounted(() => {
   background-color: #f5f7fa;
 }
 
-/* 表格响应式优化 */
-@media (max-width: 768px) {
-  .table-container {
-    overflow-x: auto;
-  }
-  
-  :deep(.el-table) {
-    min-width: 800px;
-  }
-  
-  .pagination-container {
-    padding: 15px 10px;
-  }
+/* 操作按钮默认样式 */
+.action-buttons .desktop-actions {
+  display: block;
 }
 
-/* 操作按钮在小屏幕上的优化 */
-@media (max-width: 480px) {
-  .action-buttons .el-button {
-    min-width: 50px;
-    font-size: 10px;
-    padding: 4px 6px;
+.action-buttons .mobile-actions {
+  display: none;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 隐藏次要列和选择列 */
+  :deep(.mobile-hide),
+  :deep(.el-table-column--selection) {
+    display: none !important;
   }
   
-  .action-buttons .el-button span {
+  /* 页面头部 */
+  .page-header {
+    text-align: center;
+  }
+  
+  .page-header h2 {
+    font-size: 20px;
+  }
+  
+  .page-header p {
+    font-size: 14px;
+  }
+  
+  /* 搜索表单适配 */
+  .search-card .search-form {
+    flex-direction: column;
+  }
+  
+  .search-card .el-form-item {
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .search-card .el-input,
+  .search-card .el-select {
+    width: 100% !important;
+  }
+  
+  /* 移动端表格优化 */
+  .categories-container {
+    padding: 0;
+  }
+  
+  .table-card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  .search-card {
+    margin: 8px !important;
+    border-radius: 8px !important;
+  }
+  
+  .search-card :deep(.el-card__body) {
+    padding: 12px !important;
+  }
+  
+  .table-card :deep(.el-card__body) {
+    padding: 8px 0 !important;
+  }
+  
+  /* 表格优化 - 强制占满宽度 */
+  :deep(.el-table__header-wrapper table),
+  :deep(.el-table__body-wrapper table) {
+    width: 100% !important;
+  }
+  
+  /* 操作按钮适配 */
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+  
+  /* 分页适配 */
+  .pagination-container {
+    padding: 16px 0;
+    text-align: center;
+  }
+  
+  .el-pagination {
+    justify-content: center;
+  }
+  
+  /* 隐藏分页的部分功能 */
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
     display: none;
   }
 }

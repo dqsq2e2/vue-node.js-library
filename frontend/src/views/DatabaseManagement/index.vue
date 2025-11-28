@@ -8,7 +8,7 @@
     <!-- 数据库状态概览 -->
     <div class="status-overview">
       <el-row :gutter="20">
-        <el-col :span="8">
+        <el-col :xs="24" :sm="8">
           <el-card class="status-card">
             <div class="status-item">
               <div class="status-icon primary">
@@ -22,7 +22,7 @@
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :xs="24" :sm="8">
           <el-card class="status-card">
             <div class="status-item">
               <div class="status-icon warning">
@@ -36,7 +36,7 @@
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :xs="24" :sm="8">
           <el-card class="status-card">
             <div class="status-item">
               <div class="status-icon success">
@@ -155,8 +155,8 @@
           </el-col>
         </el-row>
         <div class="conflict-actions">
-          <el-button type="primary" @click="loadConflicts">刷新冲突记录</el-button>
-          <el-button type="success" @click="batchResolveConflicts" :disabled="selectedConflicts.length === 0">
+          <el-button type="primary" @click="loadConflicts" :class="{ 'mobile-action-btn': isMobile }">刷新冲突记录</el-button>
+          <el-button type="success" @click="batchResolveConflicts" :disabled="selectedConflicts.length === 0" :class="{ 'mobile-action-btn': isMobile }">
             批量解决 ({{ selectedConflicts.length }})
           </el-button>
         </div>
@@ -166,28 +166,33 @@
         :data="conflictList" 
         style="width: 100%"
         @selection-change="handleConflictSelection"
+        @row-click="handleRowClick"
+        @row-dblclick="handleRowDblClick"
         v-loading="conflictLoading"
+        class="clickable-table"
+        stripe
+        border
       >
         <el-table-column type="selection" width="55" :selectable="isRowSelectable" />
-        <el-table-column prop="conflict_id" label="冲突ID" width="80" />
+        <el-table-column v-if="!isMobile" prop="conflict_id" label="冲突ID" width="80" />
         <el-table-column prop="table_name" label="表名" width="120" />
-        <el-table-column prop="record_id" label="记录ID" width="80" />
-        <el-table-column prop="source_db" label="源数据库" width="100">
+        <el-table-column v-if="!isMobile" prop="record_id" label="记录ID" width="80" />
+        <el-table-column v-if="!isMobile" prop="source_db" label="源数据库" width="100">
           <template #default="{ row }">
             <el-tag size="small">{{ row.source_db.toUpperCase() }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="target_db" label="目标数据库" width="100">
+        <el-table-column v-if="!isMobile" prop="target_db" label="目标数据库" width="100">
           <template #default="{ row }">
             <el-tag size="small">{{ row.target_db.toUpperCase() }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="conflict_time" label="冲突时间" width="160">
+        <el-table-column v-if="!isMobile" label="冲突时间" width="160" show-overflow-tooltip>
           <template #default="{ row }">
             {{ formatDateTime(row.conflict_time) }}
           </template>
         </el-table-column>
-        <el-table-column prop="resolve_status" label="状态" width="100">
+        <el-table-column label="状态" :width="isMobile ? '' : 100">
           <template #default="{ row }">
             <el-tag 
               :type="getStatusType(row.resolve_status)"
@@ -197,23 +202,48 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" :width="isMobile ? '' : 100">
           <template #default="{ row }">
-            <el-button 
-              size="small" 
-              type="primary" 
-              @click="showConflictDetail(row)"
-            >
-              查看详情
-            </el-button>
-            <el-button 
-              v-if="row.resolve_status === '待处理'"
-              size="small" 
-              type="success" 
-              @click="resolveConflict(row)"
-            >
-              解决
-            </el-button>
+            <div class="action-buttons">
+              <!-- 桌面端显示 -->
+              <div v-if="!isMobile" class="desktop-actions" @click.stop>
+                <el-button 
+                  size="small" 
+                  type="primary" 
+                  @click="showConflictDetail(row)"
+                >
+                  查看详情
+                </el-button>
+                <el-button 
+                  v-if="row.resolve_status === '待处理'"
+                  size="small" 
+                  type="success" 
+                  @click="resolveConflict(row)"
+                >
+                  解决
+                </el-button>
+              </div>
+              
+              <!-- 移动端下拉菜单 -->
+              <div v-else class="mobile-actions" @click.stop>
+                <el-dropdown @command="(cmd) => handleConflictCommand(cmd, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item 
+                        v-if="row.resolve_status === '待处理'"
+                        command="resolve"
+                      >
+                        解决冲突
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -235,11 +265,11 @@
     <el-dialog
       title="冲突记录详情"
       v-model="conflictDetailVisible"
-      width="80%"
+      :width="isMobile ? '95%' : '80%'"
       :close-on-click-modal="false"
     >
       <div v-if="currentConflict">
-        <el-descriptions title="冲突基本信息" :column="2" border>
+        <el-descriptions title="冲突基本信息" :column="isMobile ? 1 : 2" border>
           <el-descriptions-item label="冲突ID">{{ currentConflict.conflict_id }}</el-descriptions-item>
           <el-descriptions-item label="表名">{{ currentConflict.table_name }}</el-descriptions-item>
           <el-descriptions-item label="记录ID">{{ currentConflict.record_id }}</el-descriptions-item>
@@ -251,13 +281,13 @@
         <div class="conflict-data-comparison">
           <h3>数据对比</h3>
           <el-row :gutter="20">
-            <el-col :span="12">
+            <el-col :span="isMobile ? 24 : 12">
               <h4>源数据库数据</h4>
               <el-card class="data-card">
                 <pre>{{ formatJson(currentConflict.source_data) }}</pre>
               </el-card>
             </el-col>
-            <el-col :span="12">
+            <el-col :span="isMobile ? 24 : 12" :style="isMobile ? 'margin-top: 12px;' : ''">
               <h4>目标数据库数据</h4>
               <el-card class="data-card">
                 <pre>{{ formatJson(currentConflict.target_data) }}</pre>
@@ -269,7 +299,7 @@
         <!-- 已解决冲突的处理信息 -->
         <div v-if="currentConflict && currentConflict.resolve_status !== '待处理'" class="conflict-resolved">
           <h3>处理信息</h3>
-          <el-descriptions :column="2" border>
+          <el-descriptions :column="isMobile ? 1 : 2" border>
             <el-descriptions-item label="处理状态">
               <el-tag :type="getStatusType(currentConflict.resolve_status)">
                 {{ currentConflict.resolve_status }}
@@ -278,7 +308,7 @@
             <el-descriptions-item label="处理时间">
               {{ currentConflict.resolve_time ? new Date(currentConflict.resolve_time).toLocaleString() : '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="处理说明" :span="2">
+            <el-descriptions-item label="处理说明" :span="isMobile ? 1 : 2">
               {{ currentConflict.resolve_note || '无' }}
             </el-descriptions-item>
           </el-descriptions>
@@ -287,7 +317,7 @@
         <!-- 待处理冲突的解决方案 -->
         <div v-else class="conflict-resolution">
           <h3>解决方案</h3>
-          <el-radio-group v-model="resolutionChoice">
+          <el-radio-group v-model="resolutionChoice" :class="{ 'mobile-radio-group': isMobile }">
             <el-radio label="source">使用源数据库数据</el-radio>
             <el-radio label="target">使用目标数据库数据</el-radio>
             <el-radio label="manual">手动合并数据</el-radio>
@@ -337,15 +367,15 @@
     <el-dialog
       title="批量解决冲突"
       v-model="batchResolveDialogVisible"
-      width="500px"
+      :width="isMobile ? '95%' : '500px'"
       :close-on-click-modal="false"
     >
       <div class="batch-resolve-content">
         <p class="batch-info">已选择 <strong>{{ selectedConflicts.length }}</strong> 条冲突记录</p>
         
-        <el-form :model="batchResolveForm" label-width="100px">
+        <el-form :model="batchResolveForm" :label-width="isMobile ? '80px' : '100px'">
           <el-form-item label="解决方案" required>
-            <el-radio-group v-model="batchResolveForm.resolution">
+            <el-radio-group v-model="batchResolveForm.resolution" :class="{ 'mobile-radio-group': isMobile }">
               <el-radio label="source">
                 <span class="resolution-option">
                   <i class="el-icon-upload2"></i>
@@ -420,13 +450,21 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 import api from '@/utils/api'
+import { formatDate } from '@/utils'
 
 export default {
   name: 'DatabaseManagement',
   setup() {
+    // 移动端检测
+    const isMobile = ref(window.innerWidth <= 768)
+    const handleResize = () => {
+      isMobile.value = window.innerWidth <= 768
+    }
+
     // 响应式数据
     const currentMasterDb = ref('mysql')
     const masterDbStatus = ref('正常运行')
@@ -594,6 +632,35 @@ export default {
       showConflictDetail(conflict)
     }
 
+    const handleConflictCommand = (command, row) => {
+      switch (command) {
+        case 'view':
+          showConflictDetail(row)
+          break
+        case 'resolve':
+          resolveConflict(row)
+          break
+      }
+    }
+
+    const handleView = (row) => {
+      showConflictDetail(row)
+    }
+
+    // 行单击事件
+    const handleRowClick = (row) => {
+      if (isMobile.value) {
+        handleView(row)
+      }
+    }
+
+    // 行双击事件
+    const handleRowDblClick = (row) => {
+      if (!isMobile.value) {
+        handleView(row)
+      }
+    }
+
     const confirmResolveConflict = async () => {
       try {
         resolveLoading.value = true
@@ -692,8 +759,7 @@ export default {
     }
 
     const formatDateTime = (dateTime) => {
-      if (!dateTime) return '-'
-      return new Date(dateTime).toLocaleString('zh-CN')
+      return formatDate(dateTime) || '-'
     }
 
     const formatJson = (jsonStr) => {
@@ -727,12 +793,18 @@ export default {
 
     // 生命周期
     onMounted(() => {
+      window.addEventListener('resize', handleResize)
       loadDatabaseStatus()
       loadConflicts()
     })
 
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize)
+    })
+
     return {
       // 数据
+      isMobile,
       currentMasterDb,
       masterDbStatus,
       conflictCount,
@@ -767,6 +839,10 @@ export default {
       confirmSwitchMaster,
       showConflictDetail,
       resolveConflict,
+      handleConflictCommand,
+      handleView,
+      handleRowClick,
+      handleRowDblClick,
       confirmResolveConflict,
       handleConflictSelection,
       isRowSelectable,
@@ -776,7 +852,10 @@ export default {
       handleCurrentChange,
       formatDateTime,
       formatJson,
-      getStatusType
+      getStatusType,
+      
+      // 图标
+      ArrowDown
     }
   }
 }
@@ -887,6 +966,8 @@ export default {
 
 .conflict-actions {
   margin-top: 16px;
+  display: flex;
+  gap: 12px;
 }
 
 .pagination {
@@ -1009,5 +1090,177 @@ export default {
   margin: 0 0 16px 0;
   font-size: 16px;
   color: #303133;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .database-management {
+    padding: 10px;
+  }
+  
+  /* 状态卡片移动端适配 */
+  .status-overview {
+    margin-bottom: 15px;
+  }
+  
+  .status-card {
+    margin-bottom: 15px;
+  }
+  
+  .status-item {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .status-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    margin-right: 15px;
+    margin-bottom: 0;
+  }
+  
+  .status-content h3 {
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  
+  .status-content .status-value {
+    font-size: 20px;
+  }
+  
+  .status-content .status-desc {
+    font-size: 12px;
+  }
+  
+  /* 页面头部适配 */
+  .page-header h1 {
+    font-size: 20px;
+  }
+  
+  .page-header .page-description {
+    font-size: 13px;
+  }
+  
+  /* 卡片间距调整 */
+  .section-card {
+    margin-bottom: 15px;
+  }
+  
+  /* 容器优化 */
+  .database-management {
+    padding: 0 !important;
+  }
+  
+  .section-card {
+    margin: 0 0 8px 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  .section-card :deep(.el-card__body) {
+    padding: 8px !important;
+  }
+  
+  /* 表格优化 - 强制占满宽度 */
+  :deep(.el-table__header-wrapper table),
+  :deep(.el-table__body-wrapper table) {
+    width: 100% !important;
+  }
+  
+  /* 冲突控制区域适配 */
+  .conflict-controls {
+    margin-bottom: 12px;
+  }
+  
+  .conflict-controls .el-select,
+  .conflict-controls .el-input {
+    width: 100% !important;
+  }
+  
+  .conflict-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .conflict-actions .el-button {
+    width: 100%;
+    margin: 0 !important;
+  }
+  
+  /* 冲突详情对话框适配 */
+  .mobile-radio-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .mobile-radio-group .el-radio {
+    margin-bottom: 12px;
+    margin-right: 0;
+  }
+  
+  .conflict-data-comparison h3,
+  .conflict-resolved h3,
+  .conflict-resolution h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
+  .conflict-data-comparison h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  .data-card {
+    margin-bottom: 12px;
+  }
+  
+  .data-card pre {
+    font-size: 12px;
+    line-height: 1.4;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .manual-merge,
+  .resolution-note {
+    margin-top: 12px;
+  }
+  
+  .manual-merge h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  /* 操作按钮适配 */
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+}
+
+/* 桌面端操作按钮样式 */
+@media (min-width: 769px) {
+  .action-buttons .desktop-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: none;
+  }
+}
+
+/* 可点击表格样式 */
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.clickable-table :deep(.el-table__row:hover) {
+  background-color: #f5f7fa;
 }
 </style>

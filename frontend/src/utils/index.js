@@ -10,6 +10,7 @@ export function formatDate(date, format = 'YYYY-MM-DD HH:mm:ss') {
   const d = new Date(date)
   if (isNaN(d.getTime())) return ''
   
+  // 使用本地时间方法，自动转换为北京时间（UTC+8）
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')

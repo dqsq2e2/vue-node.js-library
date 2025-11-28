@@ -82,59 +82,111 @@
 
     <!-- 图书列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table 
-        v-loading="loading"
-        :data="bookList" 
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" :index="(index) => (pagination.page - 1) * pagination.size + index + 1" />
-        <el-table-column label="封面" width="80">
+      <div class="table-container">
+        <el-table 
+          v-loading="loading"
+          :data="bookList" 
+          style="width: 100%"
+          stripe
+          border
+          @selection-change="handleSelectionChange"
+          @row-click="handleRowClick"
+          @row-dblclick="handleRowDblClick"
+          class="clickable-table"
+        >
+        <el-table-column v-if="!isMobile" type="selection" width="55" />
+        <el-table-column v-if="!isMobile" type="index" label="序号" width="60" />
+        <el-table-column v-if="!isMobile" label="封面" width="80">
           <template #default="{ row }">
-            <div class="table-cover">
-              <img 
-                :src="getImageUrl(row.cover_image)" 
-                alt="封面" 
-                class="cover-thumbnail"
-                @error="handleImageError"
-              />
-            </div>
+            <img 
+              :src="getImageUrl(row.cover_image)" 
+              class="book-cover-thumb"
+              @error="handleImageError"
+              :alt="row.title"
+            />
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="书名" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="author" label="作者" width="120" show-overflow-tooltip />
-        <el-table-column prop="isbn" label="ISBN" width="150" />
-        <el-table-column prop="category_name" label="分类" width="120" />
-        <el-table-column prop="publisher" label="出版社" width="150" show-overflow-tooltip />
-        <el-table-column prop="price" label="价格" width="80">
+        <el-table-column prop="title" label="书名" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" label="作者" width="120" show-overflow-tooltip>
           <template #default="{ row }">
-            ¥{{ row.price }}
+            {{ row.author || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="total_copies" label="总数" width="80" />
-        <el-table-column prop="available_copies" label="可借" width="80" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column v-if="!isMobile" label="ISBN" width="130">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
+            {{ row.isbn || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="分类" width="100">
+          <template #default="{ row }">
+            {{ row.category_name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="出版社" width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.publisher || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="价格" width="80">
+          <template #default="{ row }">
+            {{ row.price ? `¥${row.price}` : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="库存" width="80">
+          <template #default="{ row }">
+            {{ row.total_copies || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="可借" width="60">
+          <template #default="{ row }">
+            {{ row.available_copies || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" :width="isMobile ? '' : 80">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)" size="small">
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? '' : 100">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button type="info" size="small" @click="handleView(row)">
-              详情
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">
-              删除
-            </el-button>
+            <div class="action-buttons">
+              <!-- 桌面端显示 -->
+              <div class="desktop-actions" @click.stop>
+                <el-dropdown @command="(command) => handleActionCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+              <!-- 移动端显示 -->
+              <div class="mobile-actions" @click.stop>
+                <el-dropdown @command="(command) => handleActionCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="view">详情</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination-container">
@@ -154,106 +206,102 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="700px"
+      width="600px"
       @close="handleDialogClose"
+      class="book-dialog"
     >
-      <el-form
-        ref="bookFormRef"
-        :model="bookForm"
-        :rules="bookRules"
-        label-width="100px"
-      >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="书名" prop="title">
-              <el-input v-model="bookForm.title" placeholder="请输入书名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="作者" prop="author">
-              <el-input v-model="bookForm.author" placeholder="请输入作者" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="ISBN" prop="isbn">
-              <el-input v-model="bookForm.isbn" placeholder="请输入ISBN" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="分类" prop="category_id">
-              <el-select v-model="bookForm.category_id" placeholder="选择分类" style="width: 100%">
-                <el-option
-                  v-for="category in categories"
-                  :key="category.category_id"
-                  :label="category.category_name"
-                  :value="category.category_id"
+      <el-scrollbar max-height="60vh">
+        <el-form 
+          ref="bookFormRef"
+          :model="bookForm"
+          :rules="bookRules"
+          label-width="90px"
+          class="dialog-form"
+        >
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="书名" prop="title">
+                <el-input v-model="bookForm.title" placeholder="请输入书名" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="作者" prop="author">
+                <el-input v-model="bookForm.author" placeholder="请输入作者" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="ISBN" prop="isbn">
+                <el-input v-model="bookForm.isbn" placeholder="请输入ISBN" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="分类" prop="category_id">
+                <el-select v-model="bookForm.category_id" placeholder="选择分类" style="width: 100%">
+                  <el-option
+                    v-for="category in categories"
+                    :key="category.category_id"
+                    :label="category.category_name"
+                    :value="category.category_id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="出版社" prop="publisher">
+                <el-input v-model="bookForm.publisher" placeholder="请输入出版社" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="出版日期" prop="publish_date">
+                <el-date-picker
+                  v-model="bookForm.publish_date"
+                  type="date"
+                  placeholder="选择出版日期"
+                  style="width: 100%"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
                 />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="出版社" prop="publisher">
-              <el-input v-model="bookForm.publisher" placeholder="请输入出版社" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="出版日期" prop="publish_date">
-              <el-date-picker
-                v-model="bookForm.publish_date"
-                type="date"
-                placeholder="选择出版日期"
-                style="width: 100%"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="价格" prop="price">
-              <el-input-number
-                v-model="bookForm.price"
-                :min="0"
-                :precision="2"
-                placeholder="价格"
-                style="width: 100%; min-width: 120px;"
-                controls-position="right"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="总数量" prop="total_copies">
-              <el-input-number
-                v-model="bookForm.total_copies"
-                :min="1"
-                placeholder="总数量"
-                style="width: 100%; min-width: 120px;"
-                controls-position="right"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="可借数量" prop="available_copies">
-              <el-input-number
-                v-model="bookForm.available_copies"
-                :min="0"
-                :max="bookForm.total_copies"
-                placeholder="可借数量"
-                style="width: 100%; min-width: 120px;"
-                controls-position="right"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="存放位置" prop="location">
-          <el-input v-model="bookForm.location" placeholder="请输入存放位置" />
-        </el-form-item>
-        <el-form-item label="封面图片">
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="价格" prop="price">
+                <el-input-number
+                  v-model="bookForm.price"
+                  :min="0"
+                  :precision="2"
+                  placeholder="请输入价格"
+                  style="width: 100%"
+                  controls-position="right"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="总数量" prop="total_copies">
+                <el-input-number
+                  v-model="bookForm.total_copies"
+                  :min="1"
+                  placeholder="请输入总数量"
+                  style="width: 100%"
+                  controls-position="right"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-form-item label="存放位置" prop="location">
+            <el-input v-model="bookForm.location" placeholder="请输入存放位置" />
+          </el-form-item>
+          
+          <el-form-item label="封面图片">
           <el-upload
             ref="uploadRef"
             class="cover-uploader"
@@ -298,8 +346,9 @@
             :rows="3"
             placeholder="请输入图书描述"
           />
-        </el-form-item>
-      </el-form>
+          </el-form-item>
+        </el-form>
+      </el-scrollbar>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
@@ -311,24 +360,25 @@
     </el-dialog>
 
     <!-- 详情对话框 -->
-    <el-dialog v-model="detailVisible" title="图书详情" width="600px">
-      <div v-if="currentBook" class="book-detail">
-        <div class="detail-content">
-          <div class="detail-cover">
+    <el-dialog v-model="detailVisible" title="图书详情" width="600px" class="detail-dialog">
+      <el-scrollbar max-height="70vh">
+        <div v-if="currentBook" class="book-detail">
+          <div class="detail-cover-section">
             <img 
               :src="getImageUrl(currentBook.cover_image)" 
               alt="封面图片" 
+              class="detail-cover-img"
               @error="handleImageError"
             />
           </div>
           <div class="detail-info">
-            <el-descriptions :column="2" border>
+            <el-descriptions :column="1" border>
               <el-descriptions-item label="书名">{{ currentBook.title }}</el-descriptions-item>
               <el-descriptions-item label="作者">{{ currentBook.author }}</el-descriptions-item>
               <el-descriptions-item label="ISBN">{{ currentBook.isbn }}</el-descriptions-item>
               <el-descriptions-item label="分类">{{ currentBook.category_name }}</el-descriptions-item>
               <el-descriptions-item label="出版社">{{ currentBook.publisher }}</el-descriptions-item>
-              <el-descriptions-item label="出版日期">{{ currentBook.publish_date }}</el-descriptions-item>
+              <el-descriptions-item label="出版日期">{{ formatDate(currentBook.publish_date) }}</el-descriptions-item>
               <el-descriptions-item label="价格">¥{{ currentBook.price }}</el-descriptions-item>
               <el-descriptions-item label="状态">
                 <el-tag :type="getStatusType(currentBook.status)">
@@ -337,26 +387,33 @@
               </el-descriptions-item>
               <el-descriptions-item label="总数量">{{ currentBook.total_copies }}</el-descriptions-item>
               <el-descriptions-item label="可借数量">{{ currentBook.available_copies }}</el-descriptions-item>
-              <el-descriptions-item label="存放位置" :span="2">{{ currentBook.location }}</el-descriptions-item>
-              <el-descriptions-item label="描述" :span="2">{{ currentBook.description || '暂无描述' }}</el-descriptions-item>
+              <el-descriptions-item label="存放位置">{{ currentBook.location }}</el-descriptions-item>
+              <el-descriptions-item label="描述">{{ currentBook.description || '暂无描述' }}</el-descriptions-item>
             </el-descriptions>
           </div>
         </div>
-      </div>
+      </el-scrollbar>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Picture } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Picture, ArrowDown } from '@element-plus/icons-vue'
 import { getBooks, addBook, updateBook, deleteBook, getCategories } from '@/api/books'
 import { getToken } from '@/utils/auth'
+import { formatDate } from '@/utils'
 
 // 路由
 const route = useRoute()
+
+// 移动端检测
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 响应式数据
 const loading = ref(false)
@@ -557,6 +614,20 @@ const handleView = (row) => {
   detailVisible.value = true
 }
 
+// 行单击事件
+const handleRowClick = (row) => {
+  if (isMobile.value) {
+    handleView(row)
+  }
+}
+
+// 行双击事件
+const handleRowDblClick = (row) => {
+  if (!isMobile.value) {
+    handleView(row)
+  }
+}
+
 // 删除图书
 const handleDelete = async (row) => {
   try {
@@ -579,6 +650,33 @@ const handleDelete = async (row) => {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
+  }
+}
+
+// 处理桌面端下拉菜单操作
+const handleDropdownCommand = (command, row) => {
+  switch (command) {
+    case 'view':
+      handleView(row)
+      break
+    case 'delete':
+      handleDelete(row)
+      break
+  }
+}
+
+// 处理移动端下拉菜单操作
+const handleActionCommand = (command, row) => {
+  switch (command) {
+    case 'edit':
+      handleEdit(row)
+      break
+    case 'view':
+      handleView(row)
+      break
+    case 'delete':
+      handleDelete(row)
+      break
   }
 }
 
@@ -780,11 +878,16 @@ const removeCover = async () => {
 onMounted(() => {
   fetchBooks()
   fetchCategories()
+  window.addEventListener('resize', handleResize)
   
   // 检查是否需要自动打开添加对话框
   if (route.query.action === 'add') {
     handleAdd()
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -792,13 +895,13 @@ onMounted(() => {
 .books-container {
   padding: 20px;
 }
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
 
 .header-left h2 {
   margin: 0 0 5px 0;
@@ -817,6 +920,11 @@ onMounted(() => {
 
 .table-card {
   margin-bottom: 20px;
+}
+
+.table-container {
+  overflow-x: auto;
+  min-height: 400px;
 }
 
 .pagination-container {
@@ -946,42 +1054,246 @@ onMounted(() => {
   flex: 1;
 }
 
-/* 表格封面样式 */
-.table-cover {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 50px;
-}
-
-.cover-thumbnail {
-  width: 35px;
-  height: 45px;
+/* 图书封面样式 */
+.book-cover-thumb {
+  width: 50px;
+  height: 60px;
   object-fit: cover;
   border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e4e7ed;
+  display: block;
 }
 
 .no-cover {
-  width: 35px;
-  height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f5f7fa;
+  display: inline-block;
+  width: 50px;
+  height: 60px;
+  line-height: 60px;
+  text-align: center;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
   border-radius: 4px;
-  color: #c0c4cc;
-  font-size: 16px;
+  font-size: 12px;
+  color: #909399;
 }
 
+/* 图书信息样式 */
+.book-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.book-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-title {
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-meta {
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.available-info {
+  font-size: 12px;
+  color: #606266;
+  margin-top: 4px;
+}
+
+/* 可点击表格样式 */
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.clickable-table :deep(.el-table__row:hover) {
+  background-color: #f5f7fa;
+}
+
+/* 操作按钮默认样式 */
+.action-buttons .desktop-actions {
+  display: block;
+}
+
+.action-buttons .mobile-actions {
+  display: none;
+}
+
+/* 对话框表单优化 */
+.dialog-form {
+  padding: 0 20px;
+}
+
+.dialog-form .el-form-item {
+  margin-bottom: 20px;
+}
+
+.book-dialog .el-dialog__body {
+  padding: 10px 0;
+}
+
+/* 详情对话框样式 */
+.detail-dialog .el-dialog__body {
+  padding: 10px 0;
+}
+
+.detail-cover-section {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 0 20px;
+}
+
+.detail-cover-img {
+  max-width: 200px;
+  max-height: 280px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.detail-info {
+  padding: 0 20px;
+}
+
+/* 移动端适配 */
 @media (max-width: 768px) {
-  .detail-content {
-    flex-direction: column;
-    align-items: center;
+  /* 对话框适配 */
+  .book-dialog {
+    width: 95% !important;
   }
   
-  .detail-cover {
+  .dialog-form {
+    padding: 0 10px;
+  }
+  
+  .dialog-form .el-row {
+    margin: 0 !important;
+  }
+  
+  .dialog-form .el-col {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  /* 详情对话框移动端适配 */
+  .detail-dialog {
+    width: 95% !important;
+  }
+  
+  .detail-cover-img {
+    max-width: 150px;
+    max-height: 210px;
+  }
+  
+  .detail-info {
+    padding: 0 10px;
+  }
+  
+  /* 页面头部适配 */
+  .page-header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .header-left h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  
+  .header-left p {
+    font-size: 14px;
+  }
+  
+  /* 搜索表单适配 */
+  .search-card .el-form {
+    flex-direction: column;
+  }
+  
+  .search-card .el-form-item {
     margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .search-card .el-input,
+  .search-card .el-select {
+    width: 100% !important;
+  }
+  
+  /* 隐藏次要列和选择列 */
+  :deep(.mobile-hide),
+  :deep(.el-table-column--selection) {
+    display: none !important;
+  }
+  
+  /* 容器优化 */
+  .books-container {
+    padding: 0 !important;
+  }
+  
+  .table-card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  .search-card {
+    margin: 8px !important;
+    border-radius: 8px !important;
+  }
+  
+  .search-card :deep(.el-card__body) {
+    padding: 12px !important;
+  }
+  
+  .table-card :deep(.el-card__body) {
+    padding: 8px 0 !important;
+  }
+  
+  /* 表格优化 - 强制占满宽度 */
+  :deep(.el-table__header-wrapper table),
+  :deep(.el-table__body-wrapper table) {
+    width: 100% !important;
+  }
+  
+  /* 操作按钮适配 */
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+  
+  .el-table .el-button {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin: 0 2px;
+  }
+  
+  /* 分页适配 */
+  .pagination-container {
+    padding: 16px 0;
+    text-align: center;
+  }
+  
+  .el-pagination {
+    justify-content: center;
+  }
+  
+  /* 隐藏分页的部分功能 */
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
   }
 }
 </style>

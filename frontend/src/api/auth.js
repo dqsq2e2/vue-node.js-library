@@ -53,3 +53,14 @@ export function sendVerificationCode(data) {
     data
   })
 }
+
+/**
+ * 发送修改邮箱验证码
+ */
+export function sendEmailChangeCode(data) {
+  return request({
+    url: '/auth/send-email-change-code',
+    method: 'post',
+    data
+  })
+}

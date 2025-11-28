@@ -300,8 +300,8 @@ router.get('/', requirePermission('USER_VIEW'), [
         last_updated_time: user.last_updated_time
       };
 
-      // 如果是读者，添加读者扩展信息
-      if (user.role === 'reader' && user.profile_id) {
+      // 如果是读者，添加读者扩展信息（即使profile_id为空也要添加，避免前端访问undefined）
+      if (user.role === 'reader') {
         baseUser.reader_profile = {
           profile_id: user.profile_id,
           card_number: user.card_number,
@@ -312,6 +312,15 @@ router.get('/', requirePermission('USER_VIEW'), [
           expire_date: user.expire_date,
           max_borrow: user.max_borrow
         };
+        
+        // 同时在顶层也添加这些字段，方便前端访问
+        baseUser.card_number = user.card_number;
+        baseUser.gender = user.gender;
+        baseUser.department = user.department;
+        baseUser.membership_type = user.membership_type;
+        baseUser.register_date = user.register_date;
+        baseUser.expire_date = user.expire_date;
+        baseUser.max_borrow = user.max_borrow;
       }
 
       return baseUser;

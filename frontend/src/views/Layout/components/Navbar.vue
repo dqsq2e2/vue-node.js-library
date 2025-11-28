@@ -378,18 +378,47 @@ export default {
 @media (max-width: 768px) {
   .navbar {
     padding: 0 12px;
+    height: 56px;
   }
   
   .navbar-left {
-    gap: 12px;
+    gap: 8px;
+  }
+  
+  .sidebar-toggle {
+    font-size: 20px;
+    padding: 8px;
   }
   
   .breadcrumb {
     display: none;
   }
   
+  .navbar-right {
+    gap: 12px;
+  }
+  
+  .database-status {
+    display: none;
+  }
+  
   .username {
     display: none;
+  }
+  
+  .user-info {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    height: 52px;
+  }
+  
+  .user-info .el-avatar {
+    width: 28px !important;
+    height: 28px !important;
   }
 }
 </style>

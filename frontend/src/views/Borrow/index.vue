@@ -16,7 +16,7 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stats-row">
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <el-card class="stats-card">
           <div class="stats-content">
             <div class="stats-number">{{ stats.total_borrowed || 0 }}</div>
@@ -25,7 +25,7 @@
           <el-icon class="stats-icon" color="#409EFF"><Reading /></el-icon>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <el-card class="stats-card">
           <div class="stats-content">
             <div class="stats-number">{{ stats.current_borrowed || 0 }}</div>
@@ -34,7 +34,7 @@
           <el-icon class="stats-icon" color="#67C23A"><Document /></el-icon>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <el-card class="stats-card">
           <div class="stats-content">
             <div class="stats-number">{{ stats.overdue_count || 0 }}</div>
@@ -43,7 +43,7 @@
           <el-icon class="stats-icon" color="#F56C6C"><Warning /></el-icon>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <el-card class="stats-card">
           <div class="stats-content">
             <div class="stats-number">{{ stats.today_returns || 0 }}</div>
@@ -116,67 +116,86 @@
 
     <!-- 借阅记录列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table 
-        v-loading="loading"
-        :data="borrowList" 
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" :index="(index) => (pagination.page - 1) * pagination.size + index + 1" />
-        <el-table-column prop="reader_name" label="读者姓名" width="120" />
-        <el-table-column prop="card_number" label="卡号" width="120" />
-        <el-table-column prop="book_title" label="图书名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="isbn" label="ISBN" width="130" />
-        <el-table-column prop="borrow_date" label="借阅日期" width="110" />
-        <el-table-column prop="due_date" label="应还日期" width="110">
+      <div class="table-container">
+        <el-table 
+          v-loading="loading"
+          :data="borrowList" 
+          style="width: 100%;"
+          @selection-change="handleSelectionChange"
+          @row-click="handleRowClick"
+          @row-dblclick="handleRowDblClick"
+          class="clickable-table"
+          stripe
+          border
+        >
+        <el-table-column v-if="!isMobile" type="selection" width="55" />
+        <el-table-column v-if="!isMobile" type="index" label="序号" width="80" :index="(index) => (pagination.page - 1) * pagination.size + index + 1" />
+        <el-table-column v-if="!isMobile" prop="reader_name" label="读者姓名" width="100" />
+        <el-table-column v-if="!isMobile" prop="card_number" label="卡号" width="100" />
+        <el-table-column prop="book_title" label="图书名称" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" prop="isbn" label="ISBN" width="130" />
+        <el-table-column v-if="!isMobile" label="借阅日期" width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ formatDate(row.borrow_date) }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="应还日期" width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="{ 'text-danger': isOverdue(row.due_date, row.status) }">
-              {{ row.due_date }}
+              {{ formatDate(row.due_date) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="return_date" label="归还日期" width="110">
+        <el-table-column v-if="!isMobile" label="归还日期" width="160" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ row.return_date || '-' }}
+            {{ formatDate(row.return_date) || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column prop="status" label="状态" :width="isMobile ? '' : 80">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fine_amount" label="罚金" width="80">
+        <el-table-column label="操作" :width="isMobile ? '' : 100">
           <template #default="{ row }">
-            {{ row.fine_amount ? `¥${row.fine_amount}` : '-' }}
+            <div class="action-buttons">
+              <!-- 桌面端显示 -->
+              <div class="desktop-actions" @click.stop>
+                <el-dropdown @command="(command) => handleMobileCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item v-if="row.status === '借出' || row.status === '逾期'" command="return">归还</el-dropdown-item>
+                      <el-dropdown-item v-if="row.status === '借出' && canRenew(row)" command="renew">续借</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+              <!-- 移动端显示 -->
+              <div class="mobile-actions" @click.stop>
+                <el-dropdown @command="(command) => handleMobileCommand(command, row)">
+                  <el-button type="primary" size="small">
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="view">查看</el-dropdown-item>
+                      <el-dropdown-item v-if="row.status === '借出' || row.status === '逾期'" command="return">归还</el-dropdown-item>
+                      <el-dropdown-item v-if="row.status === '借出' && canRenew(row)" command="renew">续借</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button 
-              v-if="row.status === '借出' || row.status === '逾期'"
-              type="success" 
-              size="small" 
-              @click="handleReturn(row)"
-            >
-              归还
-            </el-button>
-            <el-button 
-              v-if="row.status === '借出' && canRenew(row)"
-              type="warning" 
-              size="small" 
-              @click="handleRenew(row)"
-            >
-              续借
-            </el-button>
-            <el-button type="info" size="small" @click="handleView(row)">
-              详情
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination-container">
@@ -196,14 +215,14 @@
     <el-dialog
       v-model="borrowDialogVisible"
       title="新增借阅"
-      width="500px"
+      :width="isMobile ? '95%' : '500px'"
       @close="handleBorrowDialogClose"
     >
       <el-form
         ref="borrowFormRef"
         :model="borrowForm"
         :rules="borrowRules"
-        label-width="100px"
+        :label-width="isMobile ? '70px' : '100px'"
       >
         <el-form-item label="读者" prop="reader_id">
           <el-select
@@ -274,7 +293,7 @@
     <el-dialog
       v-model="returnDialogVisible"
       title="图书归还"
-      width="400px"
+      :width="isMobile ? '95%' : '400px'"
     >
       <div v-if="currentBorrow">
         <p><strong>读者：</strong>{{ currentBorrow.reader_name }}</p>
@@ -284,7 +303,7 @@
         <p v-if="isOverdue(currentBorrow.due_date, currentBorrow.status)" class="text-danger">
           <strong>逾期天数：</strong>{{ getOverdueDays(currentBorrow.due_date) }}天
         </p>
-        <el-form :model="returnForm" label-width="80px">
+        <el-form :model="returnForm" :label-width="isMobile ? '60px' : '80px'">
           <el-form-item v-if="!isReader" label="罚金">
             <el-input-number
               v-model="returnForm.fine_amount"
@@ -315,27 +334,27 @@
     </el-dialog>
 
     <!-- 详情对话框 -->
-    <el-dialog v-model="detailVisible" title="借阅详情" width="500px">
+    <el-dialog v-model="detailVisible" title="借阅详情" :width="isMobile ? '95%' : '500px'">
       <div v-if="currentBorrow" class="borrow-detail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="借阅ID">{{ currentBorrow.borrow_id }}</el-descriptions-item>
+        <el-descriptions :column="isMobile ? 1 : 2" border>
+          <el-descriptions-item label="借阅ID">{{ currentBorrow.record_id }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusType(currentBorrow.status)" size="small">
               {{ currentBorrow.status }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="读者姓名">{{ currentBorrow.reader_name }}</el-descriptions-item>
-          <el-descriptions-item label="读者卡号">{{ currentBorrow.reader_card_number }}</el-descriptions-item>
-          <el-descriptions-item label="图书名称" :span="2">{{ currentBorrow.book_title }}</el-descriptions-item>
-          <el-descriptions-item label="图书ISBN">{{ currentBorrow.book_isbn }}</el-descriptions-item>
-          <el-descriptions-item label="图书作者">{{ currentBorrow.book_author }}</el-descriptions-item>
-          <el-descriptions-item label="借阅日期">{{ currentBorrow.borrow_date }}</el-descriptions-item>
-          <el-descriptions-item label="应还日期">{{ currentBorrow.due_date }}</el-descriptions-item>
-          <el-descriptions-item label="归还日期">{{ currentBorrow.return_date || '未归还' }}</el-descriptions-item>
+          <el-descriptions-item label="读者卡号">{{ currentBorrow.card_number }}</el-descriptions-item>
+          <el-descriptions-item label="图书名称" :span="isMobile ? 1 : 2">{{ currentBorrow.book_title }}</el-descriptions-item>
+          <el-descriptions-item label="图书ISBN">{{ currentBorrow.isbn }}</el-descriptions-item>
+          <el-descriptions-item label="图书作者">{{ currentBorrow.author }}</el-descriptions-item>
+          <el-descriptions-item label="借阅日期">{{ formatDate(currentBorrow.borrow_date) }}</el-descriptions-item>
+          <el-descriptions-item label="应还日期">{{ formatDate(currentBorrow.due_date) }}</el-descriptions-item>
+          <el-descriptions-item label="归还日期">{{ formatDate(currentBorrow.return_date) || '未归还' }}</el-descriptions-item>
           <el-descriptions-item label="罚金">{{ currentBorrow.fine_amount ? `¥${currentBorrow.fine_amount}` : '无' }}</el-descriptions-item>
           <el-descriptions-item label="续借次数">{{ currentBorrow.renew_count || 0 }}次</el-descriptions-item>
           <el-descriptions-item label="操作员">{{ currentBorrow.operator_name || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="备注" :span="2">{{ currentBorrow.remarks || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="isMobile ? 1 : 2">{{ currentBorrow.remarks || '无' }}</el-descriptions-item>
         </el-descriptions>
       </div>
     </el-dialog>
@@ -343,17 +362,24 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useStore } from 'vuex'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Reading, Document, Warning, Check } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Reading, Document, Warning, Check, ArrowDown } from '@element-plus/icons-vue'
 import { getBorrowRecords, addBorrowRecord, returnBook, renewBook, getBorrowStats } from '@/api/borrow'
 import { getReaders } from '@/api/readers'
 import { getBooks } from '@/api/books'
+import { formatDate } from '@/utils'
 
 const store = useStore()
 const route = useRoute()
+
+// 移动端检测
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 用户信息
 const userInfo = computed(() => store.getters.userInfo || {})
@@ -685,6 +711,35 @@ const handleView = (row) => {
   detailVisible.value = true
 }
 
+// 行单击事件
+const handleRowClick = (row) => {
+  if (isMobile.value) {
+    handleView(row)
+  }
+}
+
+// 行双击事件
+const handleRowDblClick = (row) => {
+  if (!isMobile.value) {
+    handleView(row)
+  }
+}
+
+// 移动端下拉菜单处理
+const handleMobileCommand = (command, row) => {
+  switch (command) {
+    case 'view':
+      handleView(row)
+      break
+    case 'return':
+      handleReturn(row)
+      break
+    case 'renew':
+      handleRenew(row)
+      break
+  }
+}
+
 // 提交借阅
 const handleBorrowSubmit = async () => {
   if (!borrowFormRef.value) return
@@ -750,6 +805,7 @@ const resetBorrowForm = () => {
 
 // 生命周期
 onMounted(() => {
+  window.addEventListener('resize', handleResize)
   fetchBorrowRecords()
   fetchBorrowStats()
   
@@ -757,6 +813,10 @@ onMounted(() => {
   if (route.query.action === 'add') {
     handleBorrow()
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -826,6 +886,11 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.table-container {
+  overflow-x: auto;
+  min-height: 400px;
+}
+
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -859,5 +924,112 @@ onMounted(() => {
   height: 80px;
   display: flex;
   align-items: center;
+}
+
+/* 操作按钮样式 */
+.action-buttons .desktop-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons .mobile-actions {
+  display: none;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 隐藏次要列和选择列 */
+  :deep(.mobile-hide),
+  :deep(.el-table-column--selection) {
+    display: none !important;
+  }
+  
+  /* 表格优化 - 强制占满宽度 */
+  :deep(.el-table__header-wrapper table),
+  :deep(.el-table__body-wrapper table) {
+    width: 100% !important;
+  }
+  
+  .borrow-container {
+    padding: 0;
+  }
+  
+  .table-card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  .search-card {
+    margin: 8px !important;
+    border-radius: 8px !important;
+  }
+  
+  .search-card :deep(.el-card__body) {
+    padding: 12px !important;
+  }
+  
+  .table-card :deep(.el-card__body) {
+    padding: 8px 0 !important;
+  }
+  
+  /* 统计卡片移动端适配 */
+  .stats-row {
+    margin-bottom: 15px;
+  }
+  
+  .stats-card {
+    margin-bottom: 10px;
+  }
+  
+  .stats-number {
+    font-size: 20px;
+  }
+  
+  .stats-label {
+    font-size: 12px;
+  }
+  
+  .stats-icon {
+    font-size: 24px;
+    right: 10px;
+  }
+  
+  :deep(.stats-card .el-card__body) {
+    height: 70px;
+    padding: 15px;
+  }
+  
+  /* 操作按钮移动端适配 */
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+  
+  /* 页面头部适配 */
+  .page-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .header-left h2 {
+    font-size: 20px;
+  }
+  
+  .header-left p {
+    font-size: 13px;
+  }
+}
+
+/* 可点击表格样式 */
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.clickable-table :deep(.el-table__row:hover) {
+  background-color: #f5f7fa;
 }
 </style>

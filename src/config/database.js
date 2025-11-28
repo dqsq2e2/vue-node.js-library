@@ -13,7 +13,8 @@ const dbConfigs = {
     connectionLimit: 10,
     queueLimit: 0,
     waitForConnections: true,
-    multipleStatements: true
+    multipleStatements: true,
+    connectTimeout: 10000  // 连接超时 10 秒
   },
   mariadb: {
     host: process.env.MARIADB_HOST,
@@ -25,7 +26,8 @@ const dbConfigs = {
     connectionLimit: 10,
     queueLimit: 0,
     waitForConnections: true,
-    multipleStatements: true
+    multipleStatements: true,
+    connectTimeout: 10000
   },
   greatsql: {
     host: process.env.GREATSQL_HOST,
@@ -37,7 +39,8 @@ const dbConfigs = {
     connectionLimit: 10,
     queueLimit: 0,
     waitForConnections: true,
-    multipleStatements: true
+    multipleStatements: true,
+    connectTimeout: 10000
   }
 };
 
@@ -60,21 +63,34 @@ async function createDatabasePools() {
 }
 
 /**
- * 测试数据库连接
+ * 测试数据库连接（带超时）
  */
 async function testDatabaseConnections() {
   const results = {};
   
   for (const [dbName, pool] of Object.entries(dbPools)) {
+    const config = dbConfigs[dbName];
+    logger.info(`正在连接 ${dbName} (${config.host}:${config.port})...`);
+    
     try {
-      const connection = await pool.getConnection();
-      await connection.ping();
-      connection.release();
+      // 使用 Promise.race 添加额外超时保护
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('连接超时 (10秒)')), 10000)
+      );
+      
+      const connectPromise = (async () => {
+        const connection = await pool.getConnection();
+        await connection.ping();
+        connection.release();
+        return true;
+      })();
+      
+      await Promise.race([connectPromise, timeoutPromise]);
       results[dbName] = { status: 'connected', error: null };
-      logger.info(`${dbName} 数据库连接测试成功`);
+      logger.info(`✓ ${dbName} 连接成功`);
     } catch (error) {
       results[dbName] = { status: 'error', error: error.message };
-      logger.error(`${dbName} 数据库连接测试失败:`, error);
+      logger.warn(`✗ ${dbName} 连接失败: ${error.message}`);
     }
   }
   

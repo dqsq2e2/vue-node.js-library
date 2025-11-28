@@ -8,7 +8,7 @@
 
     <el-row :gutter="20">
       <!-- 左侧：个人信息卡片 -->
-      <el-col :span="8">
+      <el-col :xs="24" :sm="24" :md="8" :lg="8">
         <el-card class="profile-card" shadow="never" v-loading="userInfoLoading">
           <template #header>
             <div class="card-header">
@@ -38,7 +38,19 @@
                   <el-input v-model="editForm.username" disabled />
                 </el-form-item>
                 <el-form-item label="邮箱" prop="email">
-                  <el-input v-model="editForm.email" />
+                  <el-input v-model="editForm.email" placeholder="请输入新邮箱" />
+                </el-form-item>
+                <el-form-item v-if="editForm.email && editForm.email !== userInfo.email" label="验证码" prop="emailCode">
+                  <div style="display: flex; gap: 10px;">
+                    <el-input v-model="editForm.emailCode" placeholder="请输入6位验证码" maxlength="6" style="flex: 1;" />
+                    <el-button 
+                      :disabled="sendCodeDisabled" 
+                      @click="handleSendEmailCode"
+                      :loading="sendingCode"
+                    >
+                      {{ sendCodeText }}
+                    </el-button>
+                  </div>
                 </el-form-item>
                 <el-form-item label="手机号" prop="phone">
                   <el-input v-model="editForm.phone" />
@@ -88,11 +100,11 @@
       </el-col>
 
       <!-- 右侧：统计信息和快捷操作 -->
-      <el-col :span="16">
+      <el-col :xs="24" :sm="24" :md="16" :lg="16">
         <div class="right-content">
         <!-- 统计卡片 -->
         <el-row :gutter="20" class="stats-row">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="8" :md="8" :lg="8">
             <el-card class="stat-card" shadow="never">
               <div class="stat-content">
                 <div class="stat-icon">
@@ -105,7 +117,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="8" :md="8" :lg="8">
             <el-card class="stat-card" shadow="never">
               <div class="stat-content">
                 <div class="stat-icon">
@@ -118,7 +130,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="8" :md="8" :lg="8">
             <el-card class="stat-card" shadow="never">
               <div class="stat-content">
                 <div class="stat-icon">
@@ -255,7 +267,7 @@ import {
   User, Lock, Reading, DataBoard, SwitchButton, 
   SuccessFilled, WarningFilled 
 } from '@element-plus/icons-vue'
-import { getUserInfo, updateProfile, changePassword } from '@/api/auth'
+import { getUserInfo, updateProfile, changePassword, sendEmailChangeCode } from '@/api/auth'
 import { getBorrowList, getBorrowStats } from '@/api/borrow'
 
 const store = useStore()
@@ -278,6 +290,7 @@ const userInfoLoading = ref(false)
 const editForm = reactive({
   username: '',
   email: '',
+  emailCode: '',
   phone: ''
 })
 
@@ -286,10 +299,25 @@ const editRules = {
   email: [
     { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
   ],
+  emailCode: [
+    { required: true, message: '请输入邮箱验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码必须是6位数字', trigger: 'blur' }
+  ],
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ]
 }
+
+// 验证码相关状态
+const sendingCode = ref(false)
+const countdown = ref(0)
+const sendCodeDisabled = computed(() => sendingCode.value || countdown.value > 0)
+const sendCodeText = computed(() => {
+  if (countdown.value > 0) {
+    return `${countdown.value}秒后重发`
+  }
+  return '发送验证码'
+})
 
 // 修改密码表单
 const passwordForm = reactive({
@@ -465,22 +493,76 @@ const fetchUserInfo = async () => {
 const initEditForm = () => {
   editForm.username = userInfo.value.username || ''
   editForm.email = userInfo.value.email || ''
+  editForm.emailCode = ''
   editForm.phone = userInfo.value.phone || ''
+  countdown.value = 0
+}
+
+// 发送邮箱验证码
+const handleSendEmailCode = async () => {
+  if (!editForm.email) {
+    ElMessage.warning('请先输入新邮箱')
+    return
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) {
+    ElMessage.warning('请输入正确的邮箱地址')
+    return
+  }
+
+  if (editForm.email === userInfo.value.email) {
+    ElMessage.warning('新邮箱与当前邮箱相同')
+    return
+  }
+
+  try {
+    sendingCode.value = true
+    await sendEmailChangeCode({ newEmail: editForm.email })
+    ElMessage.success('验证码已发送到新邮箱，请查收')
+    
+    // 开始倒计时
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+      }
+    }, 1000)
+  } catch (error) {
+    ElMessage.error(error.message || '发送验证码失败')
+  } finally {
+    sendingCode.value = false
+  }
 }
 
 // 更新个人信息
 const handleUpdateProfile = () => {
   editFormRef.value.validate((valid) => {
     if (valid) {
+      // 如果修改了邮箱但没有输入验证码
+      if (editForm.email !== userInfo.value.email && !editForm.emailCode) {
+        ElMessage.warning('请输入邮箱验证码')
+        return
+      }
+
       updateLoading.value = true
-      updateProfile({
-        email: editForm.email,
+      const updateData = {
         phone: editForm.phone
-      }).then(() => {
+      }
+      
+      // 只有当邮箱发生变化时才包含邮箱和验证码
+      if (editForm.email !== userInfo.value.email) {
+        updateData.email = editForm.email
+        updateData.emailCode = editForm.emailCode
+      }
+
+      updateProfile(updateData).then(() => {
         ElMessage.success('个人信息更新成功')
         editMode.value = false
+        countdown.value = 0
         // 重新获取用户信息
         store.dispatch('user/getInfo')
+        fetchUserInfo()
       }).catch((error) => {
         ElMessage.error(error.message || '更新失败')
       }).finally(() => {
@@ -915,8 +997,87 @@ onMounted(async () => {
     padding: 10px;
   }
   
+  .page-header {
+    text-align: center;
+  }
+  
+  .page-header h2 {
+    font-size: 20px;
+  }
+  
+  .page-header p {
+    font-size: 13px;
+  }
+  
+  .profile-card {
+    margin-bottom: 15px;
+  }
+  
+  .avatar-section {
+    text-align: center;
+  }
+  
+  .avatar-section .el-avatar {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  
+  .avatar-section h3 {
+    font-size: 16px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .stats-row .el-col {
+    margin-bottom: 10px;
+  }
+  
+  .stat-card {
+    height: 80px;
+  }
+  
+  .stat-icon {
+    font-size: 24px;
+    margin-right: 10px;
+  }
+  
+  .stat-info .stat-value {
+    font-size: 18px;
+  }
+  
+  .stat-info .stat-label {
+    font-size: 12px;
+  }
+  
   .actions-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .action-item {
+    padding: 15px;
+  }
+  
+  .action-item .el-icon {
+    font-size: 20px;
+  }
+  
+  .action-item span {
+    font-size: 12px;
+  }
+  
+  .right-content {
+    margin-top: 0;
   }
 }
 </style>

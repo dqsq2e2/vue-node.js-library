@@ -187,7 +187,7 @@ async function loginUser(username, password) {
       WHERE username = ? AND is_deleted = 0
     `;
     
-    const results = await executeQuery('mysql', sql, [username]);
+    const results = await executeQuery(null, sql, [username]);
     
     if (results.length === 0) {
       throw new UnauthorizedError('用户名或密码错误');
@@ -207,7 +207,7 @@ async function loginUser(username, password) {
     }
     
     // 更新最后登录时间
-    await executeQuery('mysql', 
+    await executeQuery(null, 
       'UPDATE system_users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
       [user.user_id]
     );

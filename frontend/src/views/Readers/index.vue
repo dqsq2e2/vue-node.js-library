@@ -76,54 +76,80 @@
         :data="readerList" 
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        @row-click="handleRowClick"
+        @row-dblclick="handleRowDblClick"
+        class="clickable-table"
+        stripe
+        border
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" :index="(index) => (pagination.page - 1) * pagination.size + index + 1" />
-        <el-table-column prop="name" label="姓名" width="120" />
-        <el-table-column prop="card_number" label="卡号" width="150" />
-        <el-table-column prop="gender" label="性别" width="80">
+        <el-table-column v-if="!isMobile" type="selection" width="55" />
+        <el-table-column v-if="!isMobile" type="index" label="序号" width="60" :index="(index) => (pagination.page - 1) * pagination.size + index + 1" />
+        <el-table-column prop="name" label="姓名" />
+        <el-table-column v-if="!isMobile" prop="card_number" label="卡号" width="120" />
+        <el-table-column v-if="!isMobile" prop="gender" label="性别" width="60">
           <template #default="{ row }">
             <el-tag :type="row.gender === '男' ? 'primary' : 'success'" size="small">
               {{ row.gender }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="phone" label="手机号" width="130" />
-        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip />
-        <el-table-column prop="department" label="部门" width="120" show-overflow-tooltip />
-        <el-table-column prop="membership_type" label="会员类型" width="120">
+        <el-table-column v-if="!isMobile" prop="phone" label="手机号" width="120" />
+        <el-table-column v-if="!isMobile" prop="email" label="邮箱" width="150" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" prop="department" label="部门" width="100" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" prop="membership_type" label="会员类型" width="80">
           <template #default="{ row }">
             <el-tag :type="getMembershipType(row.membership_type)" size="small">
               {{ row.membership_type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="register_date" label="注册日期" width="110" />
-        <el-table-column prop="expire_date" label="到期日期" width="110">
+        <el-table-column v-if="!isMobile" label="注册日期" width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ formatDate(row.register_date) }}
+          </template>
+        </el-table-column>
+        <el-table-column v-if="!isMobile" label="到期日期" width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="{ 'text-danger': isExpiringSoon(row.expire_date) }">
-              {{ row.expire_date }}
+              {{ formatDate(row.expire_date) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column v-if="!isMobile" prop="status" label="状态" width="70">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" :width="isMobile ? '' : 100">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button type="info" size="small" @click="handleView(row)">
-              详情
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">
-              删除
-            </el-button>
+            <div class="action-buttons">
+              <div class="desktop-actions" @click.stop>
+                <el-dropdown @command="(cmd) => handleCommand(cmd, row)">
+                  <el-button type="primary" size="small">操作<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+              <div class="mobile-actions" @click.stop>
+                <el-dropdown @command="(cmd) => handleCommand(cmd, row)">
+                  <el-button type="primary" size="small">操作<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -277,8 +303,8 @@
               {{ currentReader.membership_type }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="注册日期">{{ currentReader.register_date }}</el-descriptions-item>
-          <el-descriptions-item label="到期日期">{{ currentReader.expire_date }}</el-descriptions-item>
+          <el-descriptions-item label="注册日期">{{ formatDate(currentReader.register_date) }}</el-descriptions-item>
+          <el-descriptions-item label="到期日期">{{ formatDate(currentReader.expire_date) }}</el-descriptions-item>
           <el-descriptions-item label="最大借阅">{{ currentReader.max_borrow }}本</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusType(currentReader.status)" size="small">
@@ -292,14 +318,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, ArrowDown } from '@element-plus/icons-vue'
 import { getReaders, addReader, updateReader, deleteReader } from '@/api/readers'
+import { formatDate } from '@/utils'
 
 // 路由
 const route = useRoute()
+
+// 移动端检测
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 响应式数据
 const loading = ref(false)
@@ -507,6 +540,27 @@ const handleView = (row) => {
   detailVisible.value = true
 }
 
+// 行单击事件
+const handleRowClick = (row) => {
+  if (isMobile.value) {
+    handleView(row)
+  }
+}
+
+// 行双击事件
+const handleRowDblClick = (row) => {
+  if (!isMobile.value) {
+    handleView(row)
+  }
+}
+
+// 处理下拉菜单命令
+const handleCommand = (cmd, row) => {
+  if (cmd === 'edit') handleEdit(row)
+  else if (cmd === 'view') handleView(row)
+  else if (cmd === 'delete') handleDelete(row)
+}
+
 // 删除读者
 const handleDelete = async (row) => {
   try {
@@ -607,12 +661,17 @@ const resetForm = () => {
 
 // 生命周期
 onMounted(() => {
+  window.addEventListener('resize', handleResize)
   fetchReaders()
   
   // 检查是否需要自动打开添加对话框
   if (route.query.action === 'add') {
     handleAdd()
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -673,5 +732,74 @@ onMounted(() => {
 
 :deep(.el-card__body) {
   padding: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons .mobile-actions {
+  display: none;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 隐藏次要列和选择列 */
+  :deep(.mobile-hide),
+  :deep(.el-table-column--selection) {
+    display: none !important;
+  }
+  
+  /* 表格优化 - 强制占满宽度 */
+  :deep(.el-table__header-wrapper table),
+  :deep(.el-table__body-wrapper table) {
+    width: 100% !important;
+  }
+  
+  .readers-container {
+    padding: 0;
+  }
+  
+  .table-card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  .search-card {
+    margin: 8px !important;
+    border-radius: 8px !important;
+  }
+  
+  .search-card :deep(.el-card__body) {
+    padding: 12px !important;
+  }
+  
+  .table-card :deep(.el-card__body) {
+    padding: 8px 0 !important;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .action-buttons .desktop-actions {
+    display: none;
+  }
+  
+  .action-buttons .mobile-actions {
+    display: block;
+  }
+}
+
+/* 可点击表格样式 */
+.clickable-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.clickable-table :deep(.el-table__row:hover) {
+  background-color: #f5f7fa;
 }
 </style>

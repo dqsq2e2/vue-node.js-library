@@ -152,10 +152,8 @@ SYNC_INTERVAL=60000
 # ========== 邮件配置 ==========
 SMTP_HOST=smtp.qq.com
 SMTP_PORT=465
-SMTP_SECURE=true
 SMTP_USER=your_email@qq.com
 SMTP_PASS=your_smtp_password
-ADMIN_EMAIL=admin@example.com
 ```
 
 ### 四、安装依赖
@@ -401,7 +399,63 @@ server {
 
 ---
 
+## 功能展示
+
+### 管理端界面
+
+#### 仪表盘
+提供系统数据统计概览，包括图书总量、借阅统计、读者信息等可视化图表。
+
+![仪表盘](https://image.sjcnas.xyz/i/2025/11/28/10fxwm8.png)
+
+#### 图书管理
+支持图书的增删改查、批量导入、图书信息详细管理，包括封面上传、库存管理等功能。
+
+![图书管理](https://image.sjcnas.xyz/i/2025/11/28/10gjw6b.png)
+
+#### 分类管理
+树形结构的图书分类管理，支持多级分类、拖拽排序等功能。
+
+![分类管理](https://image.sjcnas.xyz/i/2025/11/28/10h2amg.png)
+
+#### 读者管理
+读者信息管理、借书证管理、会员等级设置等功能。
+
+![读者管理](https://image.sjcnas.xyz/i/2025/11/28/10ho2e6.png)
+
+#### 借阅管理
+借阅记录查询、借书、还书、续借操作，支持逾期处理和罚款计算。
+
+![借阅管理](https://image.sjcnas.xyz/i/2025/11/28/10i9wyn.png)
+
+#### 数据库管理
+多数据库同步状态监控、冲突记录查看与处理、同步日志查询等高级功能。
+
+![数据库管理](https://image.sjcnas.xyz/i/2025/11/28/10j99sm.png)
+
+### 用户端界面
+
+#### 个人中心
+用户个人信息管理、借阅历史查看、密码修改、邮箱验证等功能。
+
+![个人中心](https://image.sjcnas.xyz/i/2025/11/28/10jvkk7.png)
+
+#### 图书浏览
+读者端图书检索、图书详情查看、在线借阅等功能，界面简洁友好。
+
+![图书浏览](https://image.sjcnas.xyz/i/2025/11/28/10koqsd.png)
+
+---
+
 ## 数据库设计
+
+### 数据库关系图
+
+![数据库关系图](https://image.sjcnas.xyz/i/2025/11/28/hcw9b2.png)
+
+### E-R 图
+
+![E-R图](https://image.sjcnas.xyz/i/2025/11/28/hcwavg.png)
 
 ### 核心表（10 张）
 

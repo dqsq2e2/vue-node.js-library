@@ -251,8 +251,20 @@ html, body {
   border: 1px solid #e0e0e0;
 }
 
-/* 响应式设计 */
+/* ================================
+   响应式设计 - 移动端适配
+   ================================ */
+
+/* 平板设备 (768px - 1024px) */
+@media (max-width: 1024px) {
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 手机设备 (< 768px) */
 @media (max-width: 768px) {
+  /* 布局 */
   .layout-sidebar {
     width: 64px;
   }
@@ -261,19 +273,191 @@ html, body {
     padding: 12px;
   }
   
+  /* 统计卡片 */
   .stats-container {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
   
+  .stats-card {
+    padding: 16px;
+  }
+  
+  .stats-card .stats-value {
+    font-size: 24px;
+  }
+  
+  /* 搜索区域 */
   .search-container {
     flex-direction: column;
     align-items: stretch;
+    padding: 12px;
+    gap: 8px;
   }
   
+  /* 表格区域 */
   .table-header {
     flex-direction: column;
     gap: 12px;
     align-items: stretch;
+    padding: 12px;
+  }
+  
+  .table-actions {
+    flex-wrap: wrap;
+  }
+  
+  /* 卡片 */
+  .content-card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .content-card .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  /* 表单 */
+  .form-container {
+    padding: 16px;
+  }
+  
+  /* 按钮组 */
+  .btn-group {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* 小屏手机 (< 480px) */
+@media (max-width: 480px) {
+  .layout-main {
+    padding: 8px;
+  }
+  
+  .stats-card .stats-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .stats-card .stats-value {
+    font-size: 20px;
+  }
+  
+  .stats-card .stats-title {
+    font-size: 12px;
+  }
+  
+  .content-card {
+    padding: 10px;
+    border-radius: 6px;
+  }
+  
+  .content-card .card-title {
+    font-size: 16px;
+  }
+  
+  .form-title {
+    font-size: 16px;
+  }
+}
+
+/* Element Plus 组件移动端适配 */
+@media (max-width: 768px) {
+  /* 对话框 */
+  .el-dialog {
+    width: 90% !important;
+    max-width: 90% !important;
+    margin: 5vh auto !important;
+  }
+  
+  .el-dialog__body {
+    padding: 15px !important;
+  }
+  
+  /* 表格 */
+  .el-table {
+    font-size: 12px;
+  }
+  
+  .el-table .cell {
+    padding: 0 8px;
+  }
+  
+  .el-table th.el-table__cell,
+  .el-table td.el-table__cell {
+    padding: 8px 0;
+  }
+  
+  /* 表单 */
+  .el-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .el-form-item__label {
+    padding-bottom: 4px;
+  }
+  
+  /* 表单行内布局改为垂直 */
+  .el-form--inline .el-form-item {
+    display: block;
+    margin-right: 0;
+  }
+  
+  /* 输入框 */
+  .el-input__inner {
+    height: 36px;
+  }
+  
+  /* 按钮 */
+  .el-button {
+    padding: 8px 12px;
+  }
+  
+  .el-button--small {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  /* 分页 */
+  .el-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+  
+  /* 标签页 */
+  .el-tabs__nav-scroll {
+    overflow-x: auto;
+  }
+  
+  /* 下拉菜单 */
+  .el-select {
+    width: 100%;
+  }
+  
+  /* 日期选择器 */
+  .el-date-editor.el-input {
+    width: 100%;
+  }
+  
+  /* 消息提示 */
+  .el-message {
+    min-width: auto;
+    max-width: 90%;
+  }
+  
+  /* 抽屉 */
+  .el-drawer {
+    width: 85% !important;
   }
 }
 
