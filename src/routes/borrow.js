@@ -312,9 +312,9 @@ router.get('/records', requirePermission('BORROW_VIEW'), [
 }));
 
 /**
- * 借书
+ * 借书（读者可以为自己借书，管理员可以为任何读者借书）
  */
-router.post('/', requirePermission('BORROW_MANAGE'), [
+router.post('/', requirePermission('BORROW_SELF'), [
   body('reader_id').optional().isInt({ min: 1 }).withMessage('读者ID必须是正整数'),
   body('book_id').isInt({ min: 1 }).withMessage('图书ID必须是正整数'),
   body('due_days').optional().isInt({ min: 1, max: 365 }).withMessage('借阅天数必须在1-365之间')
@@ -556,9 +556,9 @@ router.post('/:id/return', requirePermission('BORROW_MANAGE'), [
 }));
 
 /**
- * 续借
+ * 续借（读者可以续借自己的图书，管理员可以续借任何图书）
  */
-router.post('/:id/renew', requirePermission('BORROW_MANAGE'), [
+router.post('/:id/renew', requirePermission('BORROW_SELF'), [
   param('id').isInt({ min: 1 }).withMessage('借阅记录ID必须是正整数')
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
