@@ -451,11 +451,8 @@ const getImageUrl = (imagePath) => {
     return 'https://gw.alipayobjects.com/zos/rmsportal/JiqGstEfoWAOHiTxclqi.png'
   }
   if (imagePath.startsWith('http')) return imagePath
-  // 在开发环境下使用代理路径，避免跨域问题
-  if (process.env.NODE_ENV === 'development') {
-    return imagePath // 直接使用相对路径，通过代理访问
-  }
-  return `${process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000'}${imagePath}`
+  // 使用相对路径，在生产环境通过 Nginx 代理，开发环境通过 vue.config.js 代理
+  return imagePath
 }
 
 // 生命周期
