@@ -30,5 +30,6 @@ module.exports = defineConfig({
       }
     }
   },
-  publicPath: process.env.NODE_ENV === 'production' ? './' : '/'
+  // 使用绝对路径，避免子路由下 chunk 加载失败
+  publicPath: '/'
 })
