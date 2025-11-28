@@ -461,9 +461,9 @@ router.post('/', requirePermission('BORROW_SELF'), [
 }));
 
 /**
- * 还书
+ * 还书（读者可以归还自己的图书，管理员可以归还任何图书）
  */
-router.post('/:id/return', requirePermission('BORROW_MANAGE'), [
+router.post('/:id/return', requirePermission('BORROW_SELF'), [
   param('id').isInt({ min: 1 }).withMessage('借阅记录ID必须是正整数')
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
