@@ -216,6 +216,7 @@ CREATE TABLE `sync_log` (
 -- 10. 冲突记录表
 CREATE TABLE `conflict_records` (
     `conflict_id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '冲突ID',
+    `sync_log_id` BIGINT COMMENT '关联的同步日志ID',
     `table_name` VARCHAR(50) NOT NULL COMMENT '表名',
     `record_id` INT NOT NULL COMMENT '记录ID',
     `source_db` VARCHAR(50) NOT NULL COMMENT '源数据库',
@@ -231,7 +232,8 @@ CREATE TABLE `conflict_records` (
     FOREIGN KEY (`resolved_by`) REFERENCES `system_users`(`user_id`),
     INDEX `idx_resolve_status` (`resolve_status`),
     INDEX `idx_table_record` (`table_name`, `record_id`),
-    INDEX `idx_conflict_time` (`conflict_time`)
+    INDEX `idx_conflict_time` (`conflict_time`),
+    INDEX `idx_sync_log_id` (`sync_log_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='冲突记录表';
 
 SET FOREIGN_KEY_CHECKS = 1;
