@@ -1019,13 +1019,14 @@ class DatabaseSyncService {
 
       const sql = `
         INSERT INTO conflict_records 
-        (table_name, record_id, source_db, source_data, target_db, target_data, resolve_status, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (sync_log_id, table_name, record_id, source_db, source_data, target_db, target_data, resolve_status, remarks)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const primaryDB = await this.getPrimaryDatabase();
       
       await executeQuery(primaryDB, sql, [
+        log.log_id,  // 存储 sync_log_id 以建立精确关联
         conflictData.table_name,
         conflictData.record_id,
         conflictData.source_db,
@@ -1156,13 +1157,14 @@ class DatabaseSyncService {
 
       const sql = `
         INSERT INTO conflict_records 
-        (table_name, record_id, source_db, source_data, target_db, target_data, resolve_status, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (sync_log_id, table_name, record_id, source_db, source_data, target_db, target_data, resolve_status, remarks)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const primaryDB = await this.getPrimaryDatabase();
       
       await executeQuery(primaryDB, sql, [
+        log.log_id,  // 存储 sync_log_id 以建立精确关联
         conflictData.table_name,
         conflictData.record_id,
         conflictData.source_db,
