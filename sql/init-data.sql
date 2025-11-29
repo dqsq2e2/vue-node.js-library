@@ -65,7 +65,13 @@ INSERT INTO `books` (`isbn`, `title`, `author`, `publisher`, `publish_date`, `ca
 -- ===========================
 -- 5. 初始化数据库连接配置
 -- ===========================
--- 注：db_connections 配置由 init-all-databases.js 脚本根据 .env 环境变量自动插入
+-- 使用占位符，部署时由脚本替换为实际的环境变量值
+INSERT INTO `db_connections` 
+  (`db_name`, `db_type`, `host`, `port`, `database_name`, `username`, `password_enc`, `status`, `sync_priority`) 
+VALUES
+  ('mysql_main', 'mysql', '{{MYSQL_HOST}}', {{MYSQL_PORT}}, '{{MYSQL_DATABASE}}', '{{MYSQL_USER}}', '{{MYSQL_PASSWORD}}', '激活', 1),
+  ('mariadb_backup', 'mariadb', '{{MARIADB_HOST}}', {{MARIADB_PORT}}, '{{MARIADB_DATABASE}}', '{{MARIADB_USER}}', '{{MARIADB_PASSWORD}}', '激活', 2),
+  ('greatsql_archive', 'greatsql', '{{GREATSQL_HOST}}', {{GREATSQL_PORT}}, '{{GREATSQL_DATABASE}}', '{{GREATSQL_USER}}', '{{GREATSQL_PASSWORD}}', '激活', 3);
 
 -- ===========================
 -- 6. 初始化同步配置

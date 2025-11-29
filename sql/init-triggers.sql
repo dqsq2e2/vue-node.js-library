@@ -1,7 +1,14 @@
 -- 同步触发器初始化脚本
--- 更新日期：2025-11-27（与实际数据库结构同步）
+-- 更新日期：2025-11-29（修复主数据库检测BUG）
 -- 用于 MySQL/MariaDB/GreatSQL
 -- 触发器在主数据库上记录变更到 sync_log 表
+--
+-- 重要说明：
+-- 1. 此文件是模板，使用 {{DB_TYPE}} 作为占位符
+-- 2. 部署时会根据目标数据库替换为 'mysql'、'mariadb' 或 'greatsql'
+-- 3. 每个数据库的触发器会检查配置中的主数据库是否为自己
+-- 4. 例如：mysql 的触发器检查 (current_primary = 'mysql')
+--         mariadb 的触发器检查 (current_primary = 'mariadb')
 
 SET NAMES utf8mb4;
 DELIMITER //
@@ -37,14 +44,14 @@ BEGIN
     
     -- 检查是否为同步操作（防循环）
     IF @sync_in_progress IS NULL THEN
-        -- 获取当前主数据库标识
+        -- 获取主数据库标识
         SELECT config_value INTO current_primary
         FROM system_config
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
         -- 检查当前数据库是否为主数据库
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         -- 只有主数据库才记录同步日志
         IF is_master THEN
@@ -53,7 +60,7 @@ BEGIN
             ) VALUES (
                 'books', NEW.book_id, 'INSERT',
                 JSON_OBJECT('book_id', NEW.book_id, 'title', NEW.title, 'author', NEW.author, 'isbn', NEW.isbn, 'publisher', NEW.publisher, 'publish_date', NEW.publish_date, 'category_id', NEW.category_id, 'location', NEW.location, 'status', NEW.status, 'description', NEW.description, 'cover_image', NEW.cover_image, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -68,14 +75,14 @@ BEGIN
     
     -- 检查是否为同步操作（防循环）
     IF @sync_in_progress IS NULL THEN
-        -- 获取当前主数据库标识
+        -- 获取主数据库标识
         SELECT config_value INTO current_primary
         FROM system_config
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
         -- 检查当前数据库是否为主数据库
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         -- 只有主数据库才记录同步日志
         IF is_master THEN
@@ -84,7 +91,7 @@ BEGIN
             ) VALUES (
                 'books', NEW.book_id, 'UPDATE',
                 JSON_OBJECT('book_id', NEW.book_id, 'title', NEW.title, 'author', NEW.author, 'isbn', NEW.isbn, 'publisher', NEW.publisher, 'publish_date', NEW.publish_date, 'category_id', NEW.category_id, 'location', NEW.location, 'status', NEW.status, 'description', NEW.description, 'cover_image', NEW.cover_image, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -99,14 +106,14 @@ BEGIN
     
     -- 检查是否为同步操作（防循环）和软删除操作
     IF @sync_in_progress IS NULL AND NEW.is_deleted = 1 AND OLD.is_deleted = 0 THEN
-        -- 获取当前主数据库标识
+        -- 获取主数据库标识
         SELECT config_value INTO current_primary
         FROM system_config
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
         -- 检查当前数据库是否为主数据库
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         -- 只有主数据库才记录同步日志
         IF is_master THEN
@@ -115,7 +122,7 @@ BEGIN
             ) VALUES (
                 'books', NEW.book_id, 'DELETE',
                 JSON_OBJECT('book_id', NEW.book_id, 'is_deleted', NEW.is_deleted),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -137,7 +144,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -145,7 +152,7 @@ BEGIN
             ) VALUES (
                 'borrow_records', NEW.record_id, 'INSERT',
                 JSON_OBJECT('record_id', NEW.record_id, 'reader_id', NEW.reader_id, 'book_id', NEW.book_id, 'borrow_date', NEW.borrow_date, 'due_date', NEW.due_date, 'return_date', NEW.return_date, 'renew_count', NEW.renew_count, 'status', NEW.status, 'fine_amount', NEW.fine_amount, 'operator_id', NEW.operator_id, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -164,7 +171,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -172,7 +179,7 @@ BEGIN
             ) VALUES (
                 'borrow_records', NEW.record_id, 'UPDATE',
                 JSON_OBJECT('record_id', NEW.record_id, 'reader_id', NEW.reader_id, 'book_id', NEW.book_id, 'borrow_date', NEW.borrow_date, 'due_date', NEW.due_date, 'return_date', NEW.return_date, 'renew_count', NEW.renew_count, 'status', NEW.status, 'fine_amount', NEW.fine_amount, 'operator_id', NEW.operator_id, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -191,7 +198,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -199,7 +206,7 @@ BEGIN
             ) VALUES (
                 'borrow_records', NEW.record_id, 'DELETE',
                 JSON_OBJECT('record_id', NEW.record_id, 'is_deleted', NEW.is_deleted),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -221,7 +228,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -229,7 +236,7 @@ BEGIN
             ) VALUES (
                 'categories', NEW.category_id, 'INSERT',
                 JSON_OBJECT('category_id', NEW.category_id, 'category_name', NEW.category_name, 'parent_id', NEW.parent_id, 'description', NEW.description, 'sort_order', NEW.sort_order, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -248,7 +255,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -256,7 +263,7 @@ BEGIN
             ) VALUES (
                 'categories', NEW.category_id, 'UPDATE',
                 JSON_OBJECT('category_id', NEW.category_id, 'category_name', NEW.category_name, 'parent_id', NEW.parent_id, 'description', NEW.description, 'sort_order', NEW.sort_order, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -275,7 +282,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -283,7 +290,7 @@ BEGIN
             ) VALUES (
                 'categories', NEW.category_id, 'DELETE',
                 JSON_OBJECT('category_id', NEW.category_id, 'is_deleted', NEW.is_deleted),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -305,7 +312,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -313,7 +320,7 @@ BEGIN
             ) VALUES (
                 'reader_profiles', NEW.profile_id, 'INSERT',
                 JSON_OBJECT('profile_id', NEW.profile_id, 'user_id', NEW.user_id, 'card_number', NEW.card_number, 'gender', NEW.gender, 'department', NEW.department, 'membership_type', NEW.membership_type, 'register_date', NEW.register_date, 'expire_date', NEW.expire_date, 'max_borrow', NEW.max_borrow, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'is_deleted', NEW.is_deleted, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -332,7 +339,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -340,7 +347,7 @@ BEGIN
             ) VALUES (
                 'reader_profiles', NEW.profile_id, 'UPDATE',
                 JSON_OBJECT('profile_id', NEW.profile_id, 'user_id', NEW.user_id, 'card_number', NEW.card_number, 'gender', NEW.gender, 'department', NEW.department, 'membership_type', NEW.membership_type, 'register_date', NEW.register_date, 'expire_date', NEW.expire_date, 'max_borrow', NEW.max_borrow, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'is_deleted', NEW.is_deleted, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -359,7 +366,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -367,7 +374,7 @@ BEGIN
             ) VALUES (
                 'reader_profiles', NEW.profile_id, 'DELETE',
                 JSON_OBJECT('profile_id', NEW.profile_id, 'is_deleted', NEW.is_deleted),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -389,7 +396,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -397,7 +404,7 @@ BEGIN
             ) VALUES (
                 'system_users', NEW.user_id, 'INSERT',
                 JSON_OBJECT('user_id', NEW.user_id, 'username', NEW.username, 'password', NEW.password, 'real_name', NEW.real_name, 'role', NEW.role, 'email', NEW.email, 'phone', NEW.phone, 'last_login', NEW.last_login, 'status', NEW.status, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -416,7 +423,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -424,7 +431,7 @@ BEGIN
             ) VALUES (
                 'system_users', NEW.user_id, 'UPDATE',
                 JSON_OBJECT('user_id', NEW.user_id, 'username', NEW.username, 'password', NEW.password, 'real_name', NEW.real_name, 'role', NEW.role, 'email', NEW.email, 'phone', NEW.phone, 'last_login', NEW.last_login, 'status', NEW.status, 'is_deleted', NEW.is_deleted, 'created_time', NEW.created_time, 'last_updated_time', NEW.last_updated_time, 'sync_version', NEW.sync_version, 'db_source', NEW.db_source),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
@@ -443,7 +450,7 @@ BEGIN
         WHERE config_key = 'primary_database'
         LIMIT 1;
         
-        SET is_master = (current_primary = 'mysql');
+        SET is_master = (current_primary = '{{DB_TYPE}}');
         
         IF is_master THEN
             INSERT INTO sync_log (
@@ -451,7 +458,7 @@ BEGIN
             ) VALUES (
                 'system_users', NEW.user_id, 'DELETE',
                 JSON_OBJECT('user_id', NEW.user_id, 'is_deleted', NEW.is_deleted),
-                'mysql', '待同步', NOW(), 0
+                '{{DB_TYPE}}', '待同步', NOW(), 0
             );
         END IF;
     END IF;
