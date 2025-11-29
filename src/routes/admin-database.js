@@ -495,7 +495,7 @@ router.post('/conflicts/batch-resolve', authenticate, requirePermission('SYSTEM_
             const primaryKeys = {
               'books': 'book_id',
               'system_users': 'user_id',
-              'reader_profiles': 'reader_id',
+              'reader_profiles': 'profile_id',
               'borrow_records': 'record_id',
               'categories': 'category_id'
             };

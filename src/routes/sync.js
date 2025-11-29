@@ -445,6 +445,21 @@ router.post('/conflicts/:id/resolve', requirePermission('SYNC_MANAGE'), [
       newStatus, resolve_action, resolvedBy, remarks, conflictId
     ]);
 
+    // 同时更新相关的同步日志状态（与批量解决保持一致）
+    const resolutionLabels = {
+      'USE_SOURCE': '使用源数据库数据',
+      'USE_TARGET': '使用目标数据库数据',
+      'MANUAL_MERGE': '手动合并数据',
+      'IGNORE': '忽略冲突'
+    };
+    
+    await executeQuery('mysql', `
+      UPDATE sync_log 
+      SET sync_status = '同步成功', 
+          error_message = CONCAT('冲突已解决: ', ?)
+      WHERE table_name = ? AND record_id = ? AND sync_status = '冲突待处理'
+    `, [resolutionLabels[resolve_action] || resolve_action, conflict.table_name, conflict.record_id]);
+
     logger.info(`冲突解决成功: conflict_id=${conflictId}, action=${resolve_action} by ${req.user.username}`);
 
     res.json({
