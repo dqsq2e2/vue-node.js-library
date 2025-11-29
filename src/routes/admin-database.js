@@ -542,12 +542,21 @@ router.post('/conflicts/batch-resolve', authenticate, requirePermission('SYSTEM_
         `, [resolveStatus, resolveAction, req.user.id, note || resolutionLabels[resolution], conflictId]);
 
         // 同时更新相关的同步日志状态
-        await executeQuery('mysql', `
-          UPDATE sync_log 
-          SET sync_status = '同步成功', 
-              error_message = CONCAT('冲突已解决: ', ?)
-          WHERE table_name = ? AND record_id = ? AND sync_status = '冲突待处理'
-        `, [resolutionLabels[resolution], conflict.table_name, conflict.record_id]);
+        // 使用 sync_log_id 精确更新对应的 sync_log 记录
+        if (conflict.sync_log_id) {
+          logger.info(`[批量解决] 使用 sync_log_id=${conflict.sync_log_id} 更新记录`);
+          
+          const updateResult = await executeQuery('mysql', `
+            UPDATE sync_log 
+            SET sync_status = '同步成功', 
+                error_message = CONCAT('冲突已解决: ', ?)
+            WHERE log_id = ?
+          `, [resolutionLabels[resolution], conflict.sync_log_id]);
+          
+          logger.info(`[批量解决] sync_log 更新结果: affectedRows=${updateResult.affectedRows}, changedRows=${updateResult.changedRows}`);
+        } else {
+          logger.warn(`[批量解决] 警告: conflict_id=${conflictId} 没有关联的 sync_log_id，跳过 sync_log 更新`);
+        }
 
         successCount++;
         logger.info(`批量解决冲突: ID=${conflictId}, 表=${conflict.table_name}, 方案=${resolution}`);

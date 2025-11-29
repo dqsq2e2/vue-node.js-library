@@ -453,12 +453,21 @@ router.post('/conflicts/:id/resolve', requirePermission('SYNC_MANAGE'), [
       'IGNORE': '忽略冲突'
     };
     
-    await executeQuery('mysql', `
-      UPDATE sync_log 
-      SET sync_status = '同步成功', 
-          error_message = CONCAT('冲突已解决: ', ?)
-      WHERE table_name = ? AND record_id = ? AND sync_status = '冲突待处理'
-    `, [resolutionLabels[resolve_action] || resolve_action, conflict.table_name, conflict.record_id]);
+    // 使用 sync_log_id 精确更新对应的 sync_log 记录
+    if (conflict.sync_log_id) {
+      logger.info(`[单独解决] 使用 sync_log_id=${conflict.sync_log_id} 更新记录`);
+      
+      const updateResult = await executeQuery('mysql', `
+        UPDATE sync_log 
+        SET sync_status = '同步成功', 
+            error_message = CONCAT('冲突已解决: ', ?)
+        WHERE log_id = ?
+      `, [resolutionLabels[resolve_action] || resolve_action, conflict.sync_log_id]);
+      
+      logger.info(`[单独解决] sync_log 更新结果: affectedRows=${updateResult.affectedRows}, changedRows=${updateResult.changedRows}`);
+    } else {
+      logger.warn(`[单独解决] 警告: conflict_id=${conflictId} 没有关联的 sync_log_id，跳过 sync_log 更新`);
+    }
 
     logger.info(`冲突解决成功: conflict_id=${conflictId}, action=${resolve_action} by ${req.user.username}`);
 
