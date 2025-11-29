@@ -7,9 +7,14 @@
  * 
  * 选项：
  *   --db=mysql|mariadb|greatsql  只初始化指定数据库
+ *   --primary=mysql|mariadb|greatsql  指定主数据库（默认：mysql）
  *   --skip-data                   跳过初始数据
  *   --skip-triggers               跳过触发器
  *   --skip-procedures             跳过存储过程
+ * 
+ * 示例：
+ *   node scripts/init-all-databases.js --primary=mysql
+ *   node scripts/init-all-databases.js --db=mariadb --primary=mysql
  */
 
 require('dotenv').config();
@@ -59,6 +64,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     targetDb: null,
+    primaryDb: 'mysql',  // 默认主数据库
     skipData: false,
     skipTriggers: false,
     skipProcedures: false
@@ -67,6 +73,8 @@ function parseArgs() {
   args.forEach(arg => {
     if (arg.startsWith('--db=')) {
       options.targetDb = arg.split('=')[1];
+    } else if (arg.startsWith('--primary=')) {
+      options.primaryDb = arg.split('=')[1];
     } else if (arg === '--skip-data') {
       options.skipData = true;
     } else if (arg === '--skip-triggers') {
@@ -157,63 +165,69 @@ function parseSqlWithDelimiter(sql) {
   return statements;
 }
 
-// 插入数据库连接配置（使用环境变量）
-async function insertDbConnections(conn) {
-  console.log(`  执行: 插入数据库连接配置...`);
+// 替换环境变量占位符
+function replaceEnvPlaceholders(sql) {
+  // 数据库连接配置占位符
+  const replacements = {
+    '{{MYSQL_HOST}}': process.env.MYSQL_HOST || 'localhost',
+    '{{MYSQL_PORT}}': process.env.MYSQL_PORT || '3306',
+    '{{MYSQL_DATABASE}}': process.env.MYSQL_DATABASE || 'library_management',
+    '{{MYSQL_USER}}': process.env.MYSQL_USER || 'root',
+    '{{MYSQL_PASSWORD}}': process.env.MYSQL_PASSWORD || '',
+    
+    '{{MARIADB_HOST}}': process.env.MARIADB_HOST || 'localhost',
+    '{{MARIADB_PORT}}': process.env.MARIADB_PORT || '3307',
+    '{{MARIADB_DATABASE}}': process.env.MARIADB_DATABASE || 'library_management',
+    '{{MARIADB_USER}}': process.env.MARIADB_USER || 'root',
+    '{{MARIADB_PASSWORD}}': process.env.MARIADB_PASSWORD || '',
+    
+    '{{GREATSQL_HOST}}': process.env.GREATSQL_HOST || 'localhost',
+    '{{GREATSQL_PORT}}': process.env.GREATSQL_PORT || '3308',
+    '{{GREATSQL_DATABASE}}': process.env.GREATSQL_DATABASE || 'library_management',
+    '{{GREATSQL_USER}}': process.env.GREATSQL_USER || 'root',
+    '{{GREATSQL_PASSWORD}}': process.env.GREATSQL_PASSWORD || ''
+  };
   
-  const connections = [
-    {
-      db_name: 'mysql_main',
-      db_type: 'mysql',
-      host: process.env.MYSQL_HOST || 'localhost',
-      port: parseInt(process.env.MYSQL_PORT) || 3306,
-      database_name: process.env.MYSQL_DATABASE || 'library_management',
-      username: process.env.MYSQL_USER || 'root',
-      password_enc: process.env.MYSQL_PASSWORD || '',
-      status: '激活',
-      sync_priority: 1
-    },
-    {
-      db_name: 'mariadb_backup',
-      db_type: 'mariadb',
-      host: process.env.MARIADB_HOST || 'localhost',
-      port: parseInt(process.env.MARIADB_PORT) || 3307,
-      database_name: process.env.MARIADB_DATABASE || 'library_management',
-      username: process.env.MARIADB_USER || 'root',
-      password_enc: process.env.MARIADB_PASSWORD || '',
-      status: '激活',
-      sync_priority: 2
-    },
-    {
-      db_name: 'greatsql_archive',
-      db_type: 'greatsql',
-      host: process.env.GREATSQL_HOST || 'localhost',
-      port: parseInt(process.env.GREATSQL_PORT) || 3308,
-      database_name: process.env.GREATSQL_DATABASE || 'library_management',
-      username: process.env.GREATSQL_USER || 'root',
-      password_enc: process.env.GREATSQL_PASSWORD || '',
-      status: '激活',
-      sync_priority: 3
-    }
-  ];
+  let result = sql;
+  for (const [placeholder, value] of Object.entries(replacements)) {
+    result = result.replace(new RegExp(placeholder, 'g'), value);
+  }
+  
+  return result;
+}
+
+// 配置数据库角色（主/从）
+async function configureDatabaseRole(conn, currentDbName, primaryDbName) {
+  const isMaster = (currentDbName === primaryDbName);
+  
+  console.log(`  执行: 配置数据库角色 (${isMaster ? '主库' : '从库'})...`);
   
   try {
-    // 先清空现有配置
-    await conn.query('DELETE FROM `db_connections`');
+    // 更新 system_config 表
+    await conn.query(
+      `UPDATE system_config SET config_value = ? WHERE config_key = 'primary_database'`,
+      [primaryDbName]
+    );
     
-    // 插入新配置
-    for (const c of connections) {
-      await conn.query(
-        `INSERT INTO \`db_connections\` 
-         (\`db_name\`, \`db_type\`, \`host\`, \`port\`, \`database_name\`, \`username\`, \`password_enc\`, \`status\`, \`sync_priority\`) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [c.db_name, c.db_type, c.host, c.port, c.database_name, c.username, c.password_enc, c.status, c.sync_priority]
-      );
-    }
+    // 更新 sync_config 表
+    await conn.query(
+      `UPDATE sync_config SET config_value = ? WHERE config_key = 'is_master_database'`,
+      [isMaster.toString()]
+    );
     
-    console.log(`  ✅ 插入数据库连接配置 完成（已从 .env 读取）`);
+    await conn.query(
+      `UPDATE sync_config SET config_value = ? WHERE config_key = 'database_role'`,
+      [isMaster ? 'master' : 'slave']
+    );
+    
+    await conn.query(
+      `UPDATE sync_config SET config_value = ? WHERE config_key = 'sync_direction'`,
+      [isMaster ? 'master_to_slave' : 'slave_only']
+    );
+    
+    console.log(`  ✅ 数据库角色配置完成: ${currentDbName} = ${isMaster ? '主库' : '从库'}, 主库=${primaryDbName}`);
   } catch (error) {
-    console.error(`  ❌ 插入数据库连接配置失败: ${error.message}`);
+    console.error(`  ❌ 配置数据库角色失败: ${error.message}`);
   }
 }
 
@@ -248,21 +262,27 @@ async function initDatabase(dbName, config, options) {
     
     // 2. 执行初始数据（可选）
     if (!options.skipData) {
-      const dataSql = readSqlFile(sqlFiles.data);
+      let dataSql = readSqlFile(sqlFiles.data);
       if (dataSql) {
+        // 替换环境变量占位符
+        console.log(`  替换环境变量占位符...`);
+        dataSql = replaceEnvPlaceholders(dataSql);
         await executeSql(conn, dataSql, '插入初始数据');
       }
       
-      // 2.1 插入数据库连接配置（使用环境变量）
-      await insertDbConnections(conn);
+      // 2.1 配置数据库角色（主/从）
+      await configureDatabaseRole(conn, dbName, options.primaryDb);
     } else {
       console.log(`  ⏭️  跳过初始数据`);
     }
     
     // 3. 执行触发器（可选）
     if (!options.skipTriggers) {
-      const triggersSql = readSqlFile(sqlFiles.triggers);
+      let triggersSql = readSqlFile(sqlFiles.triggers);
       if (triggersSql) {
+        // 为当前数据库定制触发器（替换占位符）
+        console.log(`  为 ${dbName} 定制触发器...`);
+        triggersSql = triggersSql.replace(/{{DB_TYPE}}/g, dbName);
         await executeSql(conn, triggersSql, '创建触发器');
       }
     } else {
@@ -300,6 +320,13 @@ async function main() {
   
   const options = parseArgs();
   
+  // 验证主数据库参数
+  if (!dbConfigs[options.primaryDb]) {
+    console.error(`\n❌ 未知的主数据库: ${options.primaryDb}`);
+    console.log(`   可用选项: ${Object.keys(dbConfigs).join(', ')}`);
+    process.exit(1);
+  }
+  
   // 检查 SQL 文件是否存在
   console.log('\n检查 SQL 文件...');
   for (const [name, filePath] of Object.entries(sqlFiles)) {
@@ -320,6 +347,7 @@ async function main() {
   }
   
   console.log(`\n将初始化以下数据库: ${databases.join(', ')}`);
+  console.log(`主数据库: ${options.primaryDb.toUpperCase()} ⭐`);
   
   // 初始化每个数据库
   const results = {};
